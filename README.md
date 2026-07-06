@@ -78,21 +78,23 @@ The optimizer achieves >20% latency reduction through:
 4. **Address Assignment** -- Latency-aware memory layout
 5. **Equivalence Check** -- Lean 4 proof that relocation preserves semantics
 
-## Simulation Results
+## Current Status
 
-```
-$ cargo run --bin autocode-optimizer -- examples/simple_add.ac simple_add
-  Phase 1: Compiling Autocode to SUBLEQ...
-  Generated 3 SUBLEQ instructions
-  Phase 2: Baseline execution for profiling...
-  Executed 7 instructions
-  Phase 3: Analyzing branch frequencies...
-  Found 4 basic blocks, 0 loop headers
-  Phase 4: Computing latency-aware relocation...
-  Estimated latency reduction: 0.0%
-  Phase 5: Verifying semantic equivalence...
-  Pipeline completed in 0.00s
-```
+**Working:**
+- Autocode parser (single-pass, no AST)
+- SUBLEQ backend (compiles to SUBLEQ instructions)
+- Manchester backend (compiles to Manchester Mark 1 orders)
+- Branch analyzer (CFG construction, loop detection)
+- Drum latency model (rotational latency calculation)
+- Heuristic relocator (block ordering, address assignment)
+- Lean 4 verification files (6 proof files)
+- Frontend (GitHub Pages, Technical Brutalism aesthetic)
+
+**Known Issues:**
+- SUBLEQ emulator stores instruction fields as data, not executable code
+- Simple examples (3-4 instructions) show 0.0% latency reduction
+- Complex examples (factorial, fibonacci) crash due to address bounds
+- The >20% latency reduction claim requires working SUBLEQ execution
 
 ## Build
 
