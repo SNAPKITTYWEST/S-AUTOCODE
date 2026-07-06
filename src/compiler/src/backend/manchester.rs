@@ -1,4 +1,4 @@
-use crate::autocode::{Statement, Term, Sign};
+use crate::{Statement, Term, Sign};
 use crate::autocode::symbol_table::{SymbolTable, Address};
 
 #[derive(Debug, Clone, Copy, PartialEq)]

@@ -1,9 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SubleqInstr {
-    pub a: usize,
-    pub b: usize,
-    pub c: usize,
-}
+pub use autocode_compiler::SubleqInstr;
 
 #[derive(Debug, Clone)]
 pub struct SubleqMachine {

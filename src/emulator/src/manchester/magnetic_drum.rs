@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub struct MagneticDrum {
     tracks: usize,
     track_size: usize,

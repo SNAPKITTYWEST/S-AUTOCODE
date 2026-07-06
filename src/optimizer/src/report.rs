@@ -1,5 +1,5 @@
-use crate::optimizer::{BranchProfile, RelocationPlan, DrumGeometry};
-use crate::optimizer::drum_model::{DrumLatencyCalculator, MemoryLayout};
+use crate::{BranchProfile, RelocationPlan, DrumGeometry};
+use crate::drum_model::{DrumLatencyCalculator, MemoryLayout};
 use autocode_emulator::subleq::machine::SubleqInstr;
 use serde::{Serialize, Deserialize};
 

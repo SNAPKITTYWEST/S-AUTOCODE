@@ -1,8 +1,8 @@
-use crate::optimizer::branch_analyzer::BranchProfile;
-use crate::optimizer::drum_model::{DrumGeometry, PhysicalAddress, DrumLatencyCalculator, MemoryLayout};
+use crate::branch_analyzer::BranchProfile;
+use crate::drum_model::{DrumGeometry, PhysicalAddress, DrumLatencyCalculator, MemoryLayout};
 use autocode_emulator::subleq::machine::SubleqInstr;
 use std::collections::HashMap;
-use petgraph::graph::{Graph, NodeIndex};
+use petgraph::graph::Graph;
 
 #[derive(Debug, Clone)]
 pub struct RelocationPlan {

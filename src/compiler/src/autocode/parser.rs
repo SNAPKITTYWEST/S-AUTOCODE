@@ -1,14 +1,4 @@
-use std::collections::HashMap;
 use crate::autocode::symbol_table::SymbolTable;
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum Token {
-    Sign(Sign),
-    Identifier(String),
-    Arrow,
-    Number(i32),
-    Eof,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Sign {
@@ -31,8 +21,6 @@ pub struct Term {
 pub struct Parser {
     input: Vec<char>,
     pos: usize,
-    current_line: usize,
-    current_col: usize,
 }
 
 impl Parser {
@@ -40,8 +28,6 @@ impl Parser {
         Self {
             input: source.chars().collect(),
             pos: 0,
-            current_line: 1,
-            current_col: 1,
         }
     }
 
@@ -52,92 +38,77 @@ impl Parser {
     fn advance(&mut self) -> Option<char> {
         let ch = self.peek()?;
         self.pos += 1;
-        if ch == '\n' {
-            self.current_line += 1;
-            self.current_col = 1;
-        } else {
-            self.current_col += 1;
-        }
         Some(ch)
     }
 
     fn skip_whitespace(&mut self) {
         while let Some(ch) = self.peek() {
-            if ch.is_whitespace() {
-                self.advance();
+            if ch.is_whitespace() || ch == '#' {
+                if ch == '#' {
+                    while let Some(c) = self.peek() {
+                        if c == '\n' { self.advance(); break; }
+                        self.advance();
+                    }
+                } else {
+                    self.advance();
+                }
             } else {
                 break;
             }
         }
     }
 
-    fn skip_comment(&mut self) {
+    fn parse_number(&mut self) -> Option<i32> {
         self.skip_whitespace();
-        if self.peek() == Some('#') {
-            while let Some(ch) = self.peek() {
-                if ch == '\n' { self.advance(); break; }
-                self.advance();
-            }
-            self.skip_whitespace();
-        }
-    }
-
-    fn parse_identifier(&mut self) -> Option<String> {
-        self.skip_whitespace();
-        let mut ident = String::new();
+        let mut num_str = String::new();
         while let Some(ch) = self.peek() {
-            if ch.is_alphanumeric() || ch == '_' {
-                ident.push(self.advance()?);
+            if ch.is_ascii_digit() {
+                num_str.push(self.advance()?);
             } else {
                 break;
             }
         }
-        if ident.is_empty() { None } else { Some(ident) }
+        if num_str.is_empty() { None } else { num_str.parse().ok() }
     }
 
-    pub fn parse_statement(&mut self, symtab: &mut SymbolTable) -> Option<Statement> {
-        self.skip_comment();
+    fn parse_sign(&mut self) -> Option<Sign> {
+        self.skip_whitespace();
+        match self.peek()? {
+            '+' => { self.advance(); Some(Sign::Plus) }
+            '-' => { self.advance(); Some(Sign::Minus) }
+            _ => None,
+        }
+    }
+
+    pub fn parse_line(&mut self, symtab: &mut SymbolTable) -> Option<(Sign, i32, i32)> {
+        self.skip_whitespace();
         if self.peek().is_none() { return None; }
 
-        let mut terms = Vec::new();
+        let sign = self.parse_sign()?;
+        let addr = self.parse_number()? as usize;
+        let value = self.parse_number()?;
+        let next = self.parse_number()? as usize;
 
-        loop {
-            self.skip_comment();
-            let sign = match self.peek()? {
-                '+' => { self.advance(); Sign::Plus }
-                '-' => { self.advance(); Sign::Minus }
-                _ => return None,
-            };
+        symtab.register(&format!("mem_{}", addr));
+        symtab.register(&format!("mem_{}", addr + 1));
+        symtab.register(&format!("mem_{}", next));
 
-            let ident = self.parse_identifier()?;
-            symtab.register(&ident);
-            terms.push(Term { sign, identifier: ident });
-
-            self.skip_comment();
-            if self.peek() != Some('+') && self.peek() != Some('-') {
-                break;
-            }
-        }
-
-        self.skip_comment();
-        if self.peek() != Some('-') { return None; }
-        self.advance();
-        if self.peek() != Some('>') { return None; }
-        self.advance();
-
-        let target = self.parse_identifier()?;
-        symtab.register(&target);
-
-        Some(Statement { terms, target })
+        Some((sign, value, next as i32))
     }
 
     pub fn parse_all(&mut self, symtab: &mut SymbolTable) -> Vec<Statement> {
         let mut stmts = Vec::new();
         loop {
-            self.skip_comment();
+            self.skip_whitespace();
             if self.peek().is_none() { break; }
-            if let Some(stmt) = self.parse_statement(symtab) {
-                stmts.push(stmt);
+
+            if let Some((sign, _value, _next)) = self.parse_line(symtab) {
+                let target = format!("mem_{}", _next as usize);
+                let terms = vec![Term {
+                    sign,
+                    identifier: format!("mem_{}", _next as usize - 1),
+                }];
+                stmts.push(Statement { terms, target });
             } else {
                 while let Some(ch) = self.peek() {
                     if ch == '\n' { self.advance(); break; }

@@ -1,4 +1,4 @@
-use crate::visualization::Theme;
+use crate::Theme;
 use autocode_optimizer::drum_model::{DrumGeometry, PhysicalAddress};
 use std::collections::HashMap;
 

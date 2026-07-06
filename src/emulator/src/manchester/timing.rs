@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub struct TimingModel {
     pub total_cycles: u64,
 }

@@ -135,7 +135,10 @@ impl BranchAnalyzer {
         instructions: &[usize],
         edge_freq: &HashMap<(usize, usize), u64>,
     ) -> Vec<BlockEdge> {
-        let last_pc = *instructions.last().unwrap();
+        let last_pc = match instructions.last() {
+            Some(&pc) => pc,
+            None => return Vec::new(),
+        };
         let mut edges = Vec::new();
         for ((from, to), &count) in edge_freq {
             if *from == last_pc {

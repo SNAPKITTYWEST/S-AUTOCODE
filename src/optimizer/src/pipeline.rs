@@ -1,5 +1,5 @@
-use crate::optimizer::{BranchAnalyzer, HeuristicRelocator, DrumGeometry, ReportGenerator, LatencyReport};
-use autocode_compiler::{Parser, SymbolTable, SubleqBackend, SubleqInstr};
+use crate::{BranchAnalyzer, HeuristicRelocator, DrumGeometry, ReportGenerator, LatencyReport, RelocationPlan};
+use autocode_compiler::{SymbolTable, SubleqBackend, SubleqInstr};
 use autocode_emulator::SubleqMachine;
 use std::time::Instant;
 
@@ -17,12 +17,14 @@ impl OptimizationPipeline {
         let start = Instant::now();
 
         println!("  Phase 1: Compiling Autocode to SUBLEQ...");
-        let mut symtab = SymbolTable::new(0, 4096);
-        let mut parser = Parser::new(autocode_source);
-        let statements = parser.parse_all(&mut symtab);
+        let symtab = SymbolTable::new(0, 4096);
         let mut backend = SubleqBackend::new(symtab);
-        let original_instructions = backend.translate(&statements);
+        let original_instructions = backend.translate_from_source(autocode_source);
         println!("  Generated {} SUBLEQ instructions", original_instructions.len());
+
+        if original_instructions.is_empty() {
+            println!("  WARNING: No instructions generated from source");
+        }
 
         println!("  Phase 2: Baseline execution for profiling...");
         let mut baseline_machine = SubleqMachine::new(4096);
@@ -59,7 +61,7 @@ impl OptimizationPipeline {
         Ok(report)
     }
 
-    fn verify_equivalence(&self, original: &[SubleqInstr], plan: &crate::optimizer::RelocationPlan) -> bool {
+    fn verify_equivalence(&self, original: &[SubleqInstr], plan: &RelocationPlan) -> bool {
         let mut targets = std::collections::HashSet::new();
         for (_, &new_pc) in &plan.relocation_map {
             if !targets.insert(new_pc) { return false; }

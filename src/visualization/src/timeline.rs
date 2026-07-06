@@ -1,4 +1,4 @@
-use crate::visualization::Theme;
+use crate::Theme;
 use autocode_emulator::subleq::machine::SubleqStep;
 
 pub struct ExecutionTimeline {
@@ -17,7 +17,7 @@ impl ExecutionTimeline {
         art.push_str("Execution Timeline\n");
         art.push_str("==================\n\n");
         for (i, step) in self.steps.iter().enumerate() {
-            let bar_len = ((step.c as f64 - step.pc as f64).abs() * self.scale) as usize;
+            let bar_len = ((step.instr.c as f64 - step.pc as f64).abs() * self.scale) as usize;
             let bar = match self.theme {
                 Theme::PhosphorGreen => "█".repeat(bar_len.min(80)),
                 Theme::CrtAmber => "▓".repeat(bar_len.min(80)),
@@ -32,13 +32,13 @@ impl ExecutionTimeline {
 
     pub fn to_svg(&self) -> String {
         let width = self.steps.len().min(1000);
-        let mut svg = format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="200">"#, width * 2);
-        svg.push_str(r#"<rect width="100%" height="100%" fill="#0a0a0a"/>"#);
+        let mut svg = format!("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{}\" height=\"200\">", width * 2);
+        svg.push_str("<rect width=\"100%\" height=\"100%\" fill=\"#0a0a0a\"/>");
         for (i, step) in self.steps.iter().take(width).enumerate() {
-            let h = ((step.c as f64 - step.pc as f64).abs() * self.scale).min(180.0) as f64;
+            let h = ((step.instr.c as f64 - step.pc as f64).abs() * self.scale).min(180.0) as f64;
             let color = if step.branch_taken { "#ff0000" } else { "#00ff41" };
             svg.push_str(&format!(
-                r#"<rect x="{}" y="{}" width="1" height="{}" fill="{}"/>"#,
+                "<rect x=\"{}\" y=\"{}\" width=\"1\" height=\"{}\" fill=\"{}\"/>",
                 i * 2, 190 - h as usize, h, color
             ));
         }

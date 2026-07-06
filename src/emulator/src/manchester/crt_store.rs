@@ -1,9 +1,10 @@
+use crate::manchester::cpu::ManchesterOrder;
+
+#[derive(Debug, Clone)]
 pub struct CrtStore {
     memory: Vec<i32>,
     instructions: Vec<ManchesterOrder>,
 }
-
-use crate::manchester::cpu::ManchesterOrder;
 
 impl CrtStore {
     pub fn new(size: usize) -> Self {
