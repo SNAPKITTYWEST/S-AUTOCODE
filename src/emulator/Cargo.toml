@@ -1,0 +1,11 @@
+[package]
+name = "autocode-emulator"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rand = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+autocode-compiler = { path = "../compiler" }

@@ -1,0 +1,11 @@
+[package]
+name = "autocode-visualization"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+autocode-compiler = { path = "../compiler" }
+autocode-optimizer = { path = "../optimizer" }
+autocode-emulator = { path = "../emulator" }
+serde = { workspace = true }
+serde_json = { workspace = true }
