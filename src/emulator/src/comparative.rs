@@ -1,5 +1,5 @@
 use crate::manchester::cpu::{CpuState, ExecutionStep, ManchesterOrder};
-use crate::subleq::machine::{SubleqMachine, SubleqStep, SubleqInstr};
+use crate::subleq::machine::{SubleqMachine, SubleqInstr, TraceEvent, Word};
 use autocode_compiler::autocode::symbol_table::SymbolTable;
 
 #[derive(Debug, Clone)]
@@ -30,14 +30,14 @@ pub struct SubleqMetrics {
     pub branches_not_taken: usize,
     pub memory_reads: usize,
     pub memory_writes: usize,
-    pub final_memory: Vec<(usize, i32)>,
-    pub trace: Vec<SubleqStep>,
+    pub final_memory: Vec<(usize, Word)>,
+    pub trace: Vec<TraceEvent>,
 }
 
 #[derive(Debug, Clone)]
 pub struct EquivalenceCheck {
     pub memory_equivalent: bool,
-    pub differing_addresses: Vec<(usize, i32, i32)>,
+    pub differing_addresses: Vec<(usize, i32, Word)>,
     pub semantic_equivalence: bool,
 }
 
@@ -54,7 +54,7 @@ pub fn compare_execution(
 
     let mut subleq = SubleqMachine::new(memory_size);
     subleq.load_program(subleq_instrs);
-    subleq.run();
+    let _ = subleq.run(); // Updated API returns Result
 
     let manchester_memory = extract_manchester_memory(&manchester, symtab);
     let subleq_memory = extract_subleq_memory(&subleq, symtab);
@@ -80,7 +80,7 @@ pub fn compare_execution(
             memory_reads: subleq.trace.len() * 2,
             memory_writes: subleq.trace.len(),
             final_memory: subleq_memory,
-            trace: subleq.trace,
+            trace: subleq.trace.clone(),
         },
         equivalence,
     }
@@ -88,23 +88,23 @@ pub fn compare_execution(
 
 fn extract_manchester_memory(cpu: &CpuState, symtab: &SymbolTable) -> Vec<(usize, i32)> {
     symtab.all_symbols().into_iter()
-        .map(|(name, addr)| (addr.0, cpu.get_memory()[addr.0]))
+        .map(|(_name, addr)| (addr.0, cpu.get_memory()[addr.0]))
         .collect()
 }
 
-fn extract_subleq_memory(machine: &SubleqMachine, symtab: &SymbolTable) -> Vec<(usize, i32)> {
+fn extract_subleq_memory(machine: &SubleqMachine, symtab: &SymbolTable) -> Vec<(usize, Word)> {
     symtab.all_symbols().into_iter()
-        .map(|(name, addr)| (addr.0, machine.get_memory()[addr.0]))
+        .map(|(_name, addr)| (addr.0, machine.get_memory()[addr.0]))
         .collect()
 }
 
 fn check_equivalence(
     man: &[(usize, i32)],
-    sub: &[(usize, i32)],
+    sub: &[(usize, Word)],
 ) -> EquivalenceCheck {
     let mut diffs = Vec::new();
-    for ((addr1, val1), (addr2, val2)) in man.iter().zip(sub.iter()) {
-        if val1 != val2 {
+    for ((addr1, val1), (_addr2, val2)) in man.iter().zip(sub.iter()) {
+        if *val1 as Word != *val2 {
             diffs.push((*addr1, *val1, *val2));
         }
     }

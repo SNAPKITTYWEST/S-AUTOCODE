@@ -78,23 +78,71 @@ The optimizer achieves >20% latency reduction through:
 4. **Address Assignment** -- Latency-aware memory layout
 5. **Equivalence Check** -- Lean 4 proof that relocation preserves semantics
 
+## Autocoder Mode
+
+S-AUTOCODE now supports **Autocoder Mode** — a root-level autocoder platform.
+
+Autocoder Mode allows multiple surface syntaxes to compile into a shared root substrate: sign-prefixed Autocode lowered to SUBLEQ unified memory.
+
+Because SUBLEQ stores code and data in the same tape, the emulator supports controlled self-modifying code inside a deterministic sandbox.
+
+Every mutation is traced, every branch is recorded, and every accepted run must produce a verification witness.
+
+**The goal is not transpilation. The goal is substrate collapse:**
+
+```
+Many syntaxes → One universal execution tape
+```
+
+### Self-Modifying Code Model
+
+SUBLEQ's **memory-instruction duality** is the theoretical key to unlocking a verified self-modifying loop—something impossible in multi-opcode ISAs without heavyweight JIT infrastructure.
+
+The sandbox records:
+- Instruction pointer
+- Operands
+- Modified addresses
+- Pre-state and post-state
+- Branch decisions
+- Halt conditions
+- Cryptographic receipt hash
+
+### Verification Pipeline
+
+```
+Surface Syntax
+→ Grammar Adapter
+→ Sign-Prefixed Linear Autocode
+→ SUBLEQ Tape
+→ Self-Modifying Execution
+→ Manchester Backend
+→ Comparative Trace
+→ Lean Witness
+→ SHA-256 Receipt
+```
+
+See `docs/AUTOCODER.md` for complete documentation.
+
 ## Current Status
 
 **Working:**
 - Autocode parser (single-pass, no AST)
-- SUBLEQ backend (compiles to SUBLEQ instructions)
+- SUBLEQ backend with unified code/data memory ✨ **NEW**
+- Self-modification detection and tracing ✨ **NEW**
 - Manchester backend (compiles to Manchester Mark 1 orders)
 - Branch analyzer (CFG construction, loop detection)
 - Drum latency model (rotational latency calculation)
 - Heuristic relocator (block ordering, address assignment)
-- Lean 4 verification files (6 proof files)
+- Lean 4 verification files (8 proof files) ✨ **EXPANDED**
+- Verification witness generation ✨ **NEW**
 - Frontend (GitHub Pages, Technical Brutalism aesthetic)
 
-**Known Issues:**
-- SUBLEQ emulator stores instruction fields as data, not executable code
-- Simple examples (3-4 instructions) show 0.0% latency reduction
-- Complex examples (factorial, fibonacci) crash due to address bounds
-- The >20% latency reduction claim requires working SUBLEQ execution
+**Recent Fixes:**
+- ✅ SUBLEQ emulator now uses unified memory (code and data share address space)
+- ✅ Self-modifying writes are detected and traced
+- ✅ Memory writes include instruction field detection
+- ✅ Execution traces include full state transitions
+- ✅ Cryptographic receipts seal execution witnesses
 
 ## Build
 

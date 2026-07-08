@@ -29,7 +29,7 @@ impl OptimizationPipeline {
         println!("  Phase 2: Baseline execution for profiling...");
         let mut baseline_machine = SubleqMachine::new(4096);
         baseline_machine.load_program(&original_instructions);
-        baseline_machine.run();
+        baseline_machine.run().map_err(|e| anyhow::anyhow!("SUBLEQ execution failed: {}", e))?;
         println!("  Executed {} instructions", baseline_machine.trace.len());
 
         println!("  Phase 3: Analyzing branch frequencies...");
