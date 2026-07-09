@@ -129,13 +129,63 @@
                         </div>
                     </main>
 
-                    <!-- Right: Agent Reasoning -->
+                    <!-- Right: Agent Chat + Reasoning -->
                     <aside class="panel panel-right">
                         <div class="panel-header">
-                            <h3 class="panel-title">Agent Reasoning</h3>
+                            <h3 class="panel-title">Agents</h3>
                         </div>
                         <div class="panel-content">
-                            <div class="reasoning-stream" id="reasoning-stream"></div>
+                            <!-- Agent List -->
+                            <div class="agent-chat-section">
+                                <div class="agent-chat-label">Select an agent:</div>
+                                <div class="agent-list" id="agent-list">
+                                    <button class="agent-btn" data-agent="forge">
+                                        <span class="agent-btn-dot" style="background:#5e6ad2"></span>
+                                        <span class="agent-btn-name">FORGE</span>
+                                        <span class="agent-btn-role">Compiler</span>
+                                    </button>
+                                    <button class="agent-btn" data-agent="sentinel">
+                                        <span class="agent-btn-dot" style="background:#34c759"></span>
+                                        <span class="agent-btn-name">SENTINEL</span>
+                                        <span class="agent-btn-role">Security</span>
+                                    </button>
+                                    <button class="agent-btn" data-agent="oracle">
+                                        <span class="agent-btn-dot" style="background:#f5a623"></span>
+                                        <span class="agent-btn-name">ORACLE</span>
+                                        <span class="agent-btn-role">Analyzer</span>
+                                    </button>
+                                    <button class="agent-btn" data-agent="codex">
+                                        <span class="agent-btn-dot" style="background:#4a90e2"></span>
+                                        <span class="agent-btn-name">CODEX</span>
+                                        <span class="agent-btn-role">Docs</span>
+                                    </button>
+                                    <button class="agent-btn" data-agent="vault">
+                                        <span class="agent-btn-dot" style="background:#bd10e0"></span>
+                                        <span class="agent-btn-name">VAULT</span>
+                                        <span class="agent-btn-role">Storage</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Agent Chat -->
+                            <div class="agent-chat-box" id="agent-chat-box">
+                                <div class="agent-chat-messages" id="agent-chat-messages">
+                                    <div class="agent-chat-msg is-system">
+                                        <span class="agent-chat-sender">System</span>
+                                        <span class="agent-chat-text">Select an agent above to start chatting.</span>
+                                    </div>
+                                </div>
+                                <div class="agent-chat-input-area">
+                                    <input type="text" class="agent-chat-input" id="agent-chat-input" placeholder="Type a message to the agent...">
+                                    <button class="btn btn-mini" id="agent-chat-send">Send</button>
+                                </div>
+                            </div>
+
+                            <!-- Reasoning Stream -->
+                            <div class="reasoning-section">
+                                <div class="reasoning-label-header">Reasoning Stream</div>
+                                <div class="reasoning-stream" id="reasoning-stream"></div>
+                            </div>
                         </div>
                     </aside>
                 </div>
