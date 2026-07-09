@@ -178,6 +178,20 @@
 
         /* SELF-MOD PANEL */
         .selfmod-panel { max-height: 140px; }
+        .generated-panel { max-height: 220px; }
+        .target-tabs {
+            display: flex; gap: 0.3rem; margin-bottom: 0.4rem; flex-wrap: wrap;
+        }
+        .tab {
+            padding: 0.1rem 0.4rem; border: 1px solid var(--border); cursor: pointer;
+            font-size: 0.6rem; color: var(--dim); transition: all 0.2s;
+        }
+        .tab:hover { border-color: var(--cyan); color: var(--cyan); }
+        .tab.active { background: var(--cyan); color: var(--bg); border-color: var(--cyan); }
+        .generated-code {
+            font-size: 0.6rem; line-height: 1.4; color: var(--white);
+            overflow-y: auto; max-height: 140px; white-space: pre-wrap;
+        }
         .selfmod-entry {
             padding: 0.15rem 0.3rem;
             border-bottom: 1px solid #222;
@@ -278,6 +292,26 @@
                 </div>
             </div>
 
+            <!-- GENERATED CODE -->
+            <div class="panel generated-panel">
+                <div class="panel-header">
+                    <span style="color:var(--cyan)">GENERATED CODE</span>
+                    <span id="targetLabel">TARGET: autocode</span>
+                </div>
+                <div class="panel-body">
+                    <div class="target-tabs" id="targetTabs">
+                        <span class="tab active" data-target="autocode">Autocode</span>
+                        <span class="tab" data-target="rust">Rust</span>
+                        <span class="tab" data-target="python">Python</span>
+                        <span class="tab" data-target="javascript">JS</span>
+                        <span class="tab" data-target="c">C</span>
+                        <span class="tab" data-target="forth">Forth</span>
+                        <span class="tab" data-target="wasm">WASM</span>
+                    </div>
+                    <pre id="generatedCode" class="generated-code"></pre>
+                </div>
+            </div>
+
             <!-- TRACE -->
             <div class="panel trace-panel">
                 <div class="panel-header">
@@ -295,10 +329,12 @@
     </div>
 </div>
 
-<script>
+<script type="module">
 // ============================================================
 // WASM BRIDGE - loads autocode-wasm
 // ============================================================
+import { createCompiler } from './sexpr.js';
+const sexpr = createCompiler();
 let wasm = null;
 let wasmLoading = true;
 let wasmError = null;
@@ -402,6 +438,18 @@ function processCommand(raw) {
     if (upper === 'ASM') return showAsm();
     if (upper === 'SELFMOD' || upper === 'SELF-MOD') return showSelfMod();
 
+    // S-Expression meta-language commands
+    if (upper.startsWith('( ') || upper.startsWith('(+ ') || upper.startsWith('(- ') ||
+        upper.startsWith('(* ') || upper.startsWith('(defun ') || upper.startsWith('(if ') ||
+        upper.startsWith('(let ') || upper.startsWith('(while ') || upper.startsWith('(set ') ||
+        upper.startsWith('(not ') || upper.startsWith('(and ') || upper.startsWith('(or ') ||
+        upper.startsWith('(target ') || upper.startsWith('(print ') || upper.startsWith('(store ') ||
+        upper.startsWith('(load ')) return doSexpr(raw);
+    if (upper === 'TARGETS') return showTargets();
+    if (upper.startsWith('TARGET ')) return doSetTarget(raw.substring(7).trim());
+    if (upper === 'COMPILE-TO') return doCompileTo();
+    if (upper.startsWith('COMPILE-TO ')) return doCompileTo(raw.substring(11).trim());
+
     // Stack operations
     if (upper.startsWith('PUSH ')) return doPush(raw.substring(5).trim());
     if (upper === 'POP' || upper === 'DROP') return doDrop();
@@ -483,6 +531,23 @@ function showHelp() {
     info('  memory cell pulses magenta. The SELF-MODIFICATION');
     info('  panel tracks which instruction addresses were');
     info('  overwritten during execution.');
+    info('');
+    info('S-EXPRESSION META-LANGUAGE (write code as Lisp S-expressions):');
+    info('  (+ a b)             Add two values');
+    info('  (- a b)             Subtract');
+    info('  (* a b)             Multiply');
+    info('  (not x)             Boolean NOT');
+    info('  (and a b)           Boolean AND');
+    info('  (or a b)            Boolean OR');
+    info('  (xor a b)           Boolean XOR');
+    info('  (if cond then else) Conditional');
+    info('  (while cond body)   Loop');
+    info('  (defun name (args) body)  Define function');
+    info('  (set name value)    Set variable');
+    info('  (let ((x 1)) body)  Local binding');
+    info('  (target rust)       Switch output target');
+    info('  TARGETS             Show available targets');
+    info('  COMPILE-TO          Show generated code in current target');
 }
 
 function showExamples() {
@@ -863,6 +928,120 @@ function doStep() {
         currentPc = lastTrace[nextIdx].pc;
     }
 }
+
+// ============================================================
+// S-EXPRESSION META-LANGUAGE
+// ============================================================
+function doSexpr(raw) {
+    banner('> ' + raw);
+    try {
+        const compiled = sexpr.compile(raw);
+        lastGenerated = compiled;
+        updateGeneratedPanel(compiled);
+
+        // Also load into Autocode engine if in autocode mode
+        if (compiled.autocode && compiled.autocode.trim()) {
+            programLines = compiled.autocode.trim().split('\n').filter(l => l.trim());
+            document.getElementById('instrCount').textContent = programLines.length;
+            info('Compiled to ' + programLines.length + ' SUBLEQ instructions');
+            info('Type EXEC to run, or COMPILE-TO <target> for other languages');
+        }
+
+        // Show symbols
+        const symCount = Object.keys(compiled.symbols).length;
+        const fnCount = Object.keys(compiled.functions).length;
+        if (symCount > 0) {
+            result('Symbols: ' + Object.entries(compiled.symbols)
+                .map(([k, v]) => k + '=mem[' + v + ']').join(', '));
+        }
+        if (fnCount > 0) {
+            result('Functions: ' + Object.keys(compiled.functions).join(', '));
+        }
+
+        // Show autocode output
+        if (compiled.autocode) {
+            info('Autocode output:');
+            compiled.autocode.split('\n').forEach(line => {
+                if (line.trim()) result('  ' + line);
+            });
+        }
+    } catch (e) {
+        error('Parse error: ' + e.message);
+    }
+}
+
+let lastGenerated = null;
+
+function updateGeneratedPanel(compiled) {
+    const codeEl = document.getElementById('generatedCode');
+    const targetLabel = document.getElementById('targetLabel');
+    const currentTarget = sexpr.getTarget();
+    targetLabel.textContent = 'TARGET: ' + currentTarget;
+
+    const code = compiled[currentTarget] || compiled.autocode || '';
+    codeEl.textContent = code || '(empty)';
+
+    // Update active tab
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.target === currentTarget);
+    });
+}
+
+function showTargets() {
+    banner('=== AVAILABLE TARGETS ===');
+    info('autocode  - Sign-prefixed SUBLEQ Autocode');
+    info('rust      - Rust source code');
+    info('python    - Python source code');
+    info('javascript - JavaScript source code');
+    info('c         - C source code');
+    info('forth     - Forth-style stack language');
+    info('wasm      - WebAssembly text format');
+    info('');
+    info('Current target: ' + sexpr.getTarget());
+    info('Use: TARGET <name> to switch');
+}
+
+function doSetTarget(target) {
+    const valid = ['autocode', 'rust', 'python', 'javascript', 'c', 'forth', 'wasm'];
+    if (!valid.includes(target)) {
+        error('Unknown target: ' + target + '. Valid: ' + valid.join(', '));
+        return;
+    }
+    sexpr.setTarget(target);
+    document.getElementById('targetLabel').textContent = 'TARGET: ' + target;
+    result('Target set to: ' + target);
+
+    // Re-generate if we have code
+    if (lastGenerated) {
+        updateGeneratedPanel(lastGenerated);
+    }
+
+    // Update tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.target === target);
+    });
+}
+
+function doCompileTo(target) {
+    if (target) doSetTarget(target);
+    if (!lastGenerated) {
+        info('No S-expression code compiled yet. Write some (s-expressions) first.');
+        return;
+    }
+    updateGeneratedPanel(lastGenerated);
+    const code = lastGenerated[sexpr.getTarget()];
+    if (code) {
+        banner('=== GENERATED ' + sexpr.getTarget().toUpperCase() + ' ===');
+        code.split('\n').forEach(line => result(line));
+    }
+}
+
+// Tab click handler
+document.addEventListener('click', (e) => {
+    if (e.target.classList.contains('tab') && e.target.dataset.target) {
+        doSetTarget(e.target.dataset.target);
+    }
+});
 
 function doReset() {
     stack = [];
