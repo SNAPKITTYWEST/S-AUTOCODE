@@ -5,6 +5,7 @@ import { WormChain } from './worm-receipts.js';
 import { initWormExplorer } from './worm-explorer.js';
 import { initProofRegistry } from './proof-registry.js';
 import { stateManager, addTerminalHistory,addCommandHistory, addWormBlock, addProof } from './state-manager.js';
+import { fireworksAI } from './fireworks-ai.js';
 
 // Global state
 const state = {
@@ -74,7 +75,7 @@ const agentProfiles = {
     forge: { name: 'FORGE', role: 'Compiler', color: '#5e6ad2', trust: 'HIGH', domain: 'compilation', action: 'compile ✓', worm: 247, proposals: '44 approved', rule: 'can_execute(forge, compile)?<br>trust_gte(high, medium) ✓<br>domain_ok(compilation, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
     sentinel: { name: 'SENTINEL', role: 'Security', color: '#34c759', trust: 'HIGH', domain: 'security', action: 'audit_scan ✓', worm: 312, proposals: '56 approved', rule: 'can_execute(sentinel, audit_scan)?<br>trust_gte(high, medium) ✓<br>domain_ok(security, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
     oracle: { name: 'ORACLE', role: 'Analyzer', color: '#f5a623', trust: 'MEDIUM', domain: 'analysis', action: 'type_check ✓', worm: 189, proposals: '38 approved', rule: 'can_execute(oracle, type_check)?<br>trust_gte(medium, medium) ✓<br>domain_ok(analysis, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
-    codex: { name: 'CODEX', role: 'Docs', color: '#4a90e2', trust: 'MEDIUM', domain: 'documentation', action: 'write_proof ✓', worm: 156, proposals: '29 approved', rule: 'can_execute(codex, write_proof)?<br>trust_gte(medium, low) ✓<br>domain_ok(docs, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
+    codex: { name: 'CODEX', role: 'AI Coder', color: '#4a90e2', trust: 'HIGH', domain: 'coding', action: 'generate_code ✓', worm: 156, proposals: '29 approved', rule: 'can_execute(codex, generate_code)?<br>trust_gte(high, medium) ✓<br>domain_ok(coding, any) ✓<br>powered_by(fireworks_ai) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
     vault: { name: 'VAULT', role: 'Storage', color: '#bd10e0', trust: 'HIGH', domain: 'storage', action: 'seal_chain ✓', worm: 420, proposals: '61 approved', rule: 'can_execute(vault, seal_chain)?<br>trust_gte(high, medium) ✓<br>domain_ok(storage, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' }
 };
 
@@ -101,11 +102,11 @@ const reasoningSteps = {
         { label: 'Report', formula: '∠(risk) = μ·σ²' }
     ],
     codex: [
-        { label: 'Parse', formula: 'L(G) = { w | S ⇒* w }' },
-        { label: 'Index', formula: 'idx(t) = ∪ fᵢ(t)' },
-        { label: 'Draft', formula: 'doc = fold(λa.b, xs)' },
-        { label: 'Prove', formula: 'Γ ⊢ □φ : Type' },
-        { label: 'Seal', formula: 'H(doc) ‖ chain' }
+        { label: 'Connect', formula: 'API → Fireworks' },
+        { label: 'Analyze', formula: 'context ⊢ intent' },
+        { label: 'Generate', formula: 'LLM(prompt) → code' },
+        { label: 'Verify', formula: '∀x. valid(x) ✓' },
+        { label: 'Emit', formula: 'seal(output) → WORM' }
     ],
     vault: [
         { label: 'Read', formula: 'M[addr] → val' },
@@ -224,7 +225,7 @@ function setupAgentChat() {
     }
     
     // Send message
-    function sendChat() {
+    async function sendChat() {
         const msg = chatInput.value.trim();
         if (!msg || isThinking) return;
         
@@ -235,13 +236,33 @@ function setupAgentChat() {
         
         const typingEl = showTyping(chatMessages);
         
-        runReasoningTicker(selectedAgent, () => {
-            typingEl.remove();
-            const response = getAgentResponse(selectedAgent, msg);
-            const profile = agentProfiles[selectedAgent];
-            appendChatMsg(chatMessages, 'agent', profile.name, response);
-            isThinking = false;
-        });
+        // For CODEX, use real Fireworks AI
+        if (selectedAgent === 'codex') {
+            runReasoningTicker(selectedAgent, async () => {
+                try {
+                    const systemPrompt = 'You are CODEX, an AI coding agent in the S-AUTOCODE system. You help users write code, debug programs, and explain technical concepts. Be concise and helpful.';
+                    const response = await fireworksAI.chat(msg, systemPrompt);
+                    typingEl.remove();
+                    const profile = agentProfiles[selectedAgent];
+                    appendChatMsg(chatMessages, 'agent', profile.name, response);
+                } catch (error) {
+                    typingEl.remove();
+                    appendChatMsg(chatMessages, 'agent', 'CODEX', `Error: ${error.message}. Using fallback response.`);
+                    const fallback = getAgentResponse(selectedAgent, msg);
+                    appendChatMsg(chatMessages, 'agent', 'CODEX', fallback);
+                }
+                isThinking = false;
+            });
+        } else {
+            // Other agents use canned responses
+            runReasoningTicker(selectedAgent, () => {
+                typingEl.remove();
+                const response = getAgentResponse(selectedAgent, msg);
+                const profile = agentProfiles[selectedAgent];
+                appendChatMsg(chatMessages, 'agent', profile.name, response);
+                isThinking = false;
+            });
+        }
     }
     
     chatSend.addEventListener('click', sendChat);
@@ -286,10 +307,10 @@ function getAgentResponse(agent, msg) {
         return 'I can analyze programs, detect bugs, and verify correctness. Describe what you want to analyze.';
     }
     
-    // CODEX: Docs
+    // CODEX: AI Coder (Fireworks AI)
     if (agent === 'codex') {
-        if (lower.includes('help') || lower.includes('explain')) return 'S-AUTOCODE is a symbolic sovereign terminal. It compiles natural language to SUBLEQ assembly. Everything is deterministic and formally verified.';
-        return 'I write documentation and generate proofs. Ask me to explain any part of the system.';
+        // Use real Fireworks AI for CODEX
+        return '🔥 Connecting to Fireworks AI...';
     }
     
     // VAULT: Storage
