@@ -291,116 +291,171 @@
 
         </div>
 
-        <!-- Bottom: Memory Tape + Proofs -->
-        <footer class="bottom-panel">
-            <div class="panel-split">
-                <!-- Memory Tape -->
-                <div class="panel panel-memory">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Memory Tape</h3>
-                    </div>
-                    <div class="panel-content">
-                        <div class="tape-viewer">
-                            <div class="tape-row">
-                                <span class="tape-address">0x00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell is-active">78</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
+                <!-- Bottom: Memory Tape + Proofs + Widgets -->
+                <footer class="bottom-panel">
+                    <div class="panel-split">
+                        <!-- Memory Tape -->
+                        <div class="panel panel-memory">
+                            <div class="panel-header">
+                                <h3 class="panel-title">Memory Tape</h3>
+                                <div class="panel-actions">
+                                    <button class="btn btn-mini" id="btn-tape-prev">&#x25C0;</button>
+                                    <button class="btn btn-mini" id="btn-tape-next">&#x25B6;</button>
+                                </div>
                             </div>
-                            <div class="tape-row">
-                                <span class="tape-address">0x08</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                            </div>
-                            <div class="tape-row">
-                                <span class="tape-address">0x10</span>
-                                <span class="tape-cell">05</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">01</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
-                                <span class="tape-cell">00</span>
+                            <div class="panel-content">
+                                <div class="tape-viewer" id="tape-viewer">
+                                    <div class="tape-header">
+                                        <span class="tape-addr-label">ADDR</span>
+                                        <span class="tape-cell-label">0</span>
+                                        <span class="tape-cell-label">1</span>
+                                        <span class="tape-cell-label">2</span>
+                                        <span class="tape-cell-label">3</span>
+                                        <span class="tape-cell-label">4</span>
+                                        <span class="tape-cell-label">5</span>
+                                        <span class="tape-cell-label">6</span>
+                                        <span class="tape-cell-label">7</span>
+                                    </div>
+                                    <div class="tape-row">
+                                        <span class="tape-address">0x00</span>
+                                        <span class="tape-cell" data-addr="0">00</span>
+                                        <span class="tape-cell" data-addr="1">00</span>
+                                        <span class="tape-cell" data-addr="2">00</span>
+                                        <span class="tape-cell" data-addr="3">00</span>
+                                        <span class="tape-cell is-active" data-addr="4">78</span>
+                                        <span class="tape-cell" data-addr="5">00</span>
+                                        <span class="tape-cell" data-addr="6">00</span>
+                                        <span class="tape-cell" data-addr="7">00</span>
+                                    </div>
+                                    <div class="tape-row">
+                                        <span class="tape-address">0x08</span>
+                                        <span class="tape-cell" data-addr="8">00</span>
+                                        <span class="tape-cell" data-addr="9">00</span>
+                                        <span class="tape-cell" data-addr="10">00</span>
+                                        <span class="tape-cell" data-addr="11">00</span>
+                                        <span class="tape-cell" data-addr="12">00</span>
+                                        <span class="tape-cell" data-addr="13">00</span>
+                                        <span class="tape-cell" data-addr="14">00</span>
+                                        <span class="tape-cell" data-addr="15">00</span>
+                                    </div>
+                                    <div class="tape-row">
+                                        <span class="tape-address">0x10</span>
+                                        <span class="tape-cell" data-addr="16">05</span>
+                                        <span class="tape-cell" data-addr="17">00</span>
+                                        <span class="tape-cell" data-addr="18">00</span>
+                                        <span class="tape-cell" data-addr="19">00</span>
+                                        <span class="tape-cell" data-addr="20">01</span>
+                                        <span class="tape-cell" data-addr="21">00</span>
+                                        <span class="tape-cell" data-addr="22">00</span>
+                                        <span class="tape-cell" data-addr="23">00</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Proofs -->
-                <div class="panel panel-proofs">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Proofs</h3>
-                    </div>
-                    <div class="panel-content">
-                        <div class="proof-list">
-                            <div class="proof-item is-verified">
-                                <span class="proof-icon">&#x2713;</span>
-                                <span class="proof-name">Type Safety</span>
-                                <span class="proof-status">Verified</span>
+                        <!-- Proofs -->
+                        <div class="panel panel-proofs">
+                            <div class="panel-header">
+                                <h3 class="panel-title">Proofs</h3>
                             </div>
-                            <div class="proof-item is-verified">
-                                <span class="proof-icon">&#x2713;</span>
-                                <span class="proof-name">Termination</span>
-                                <span class="proof-status">Verified</span>
-                            </div>
-                            <div class="proof-item is-verifying">
-                                <span class="proof-icon">&#x23F3;</span>
-                                <span class="proof-name">Memory Bounds</span>
-                                <span class="proof-status">Verifying...</span>
-                            </div>
-                            <div class="proof-item is-pending">
-                                <span class="proof-icon">&#x25CB;</span>
-                                <span class="proof-name">WORM Seal</span>
-                                <span class="proof-status">Pending</span>
+                            <div class="panel-content">
+                                <div class="proof-list">
+                                    <div class="proof-item is-verified">
+                                        <span class="proof-icon">&#x2713;</span>
+                                        <span class="proof-name">Type Safety</span>
+                                        <span class="proof-status">Verified</span>
+                                    </div>
+                                    <div class="proof-item is-verified">
+                                        <span class="proof-icon">&#x2713;</span>
+                                        <span class="proof-name">Termination</span>
+                                        <span class="proof-status">Verified</span>
+                                    </div>
+                                    <div class="proof-item is-verifying">
+                                        <span class="proof-icon">&#x23F3;</span>
+                                        <span class="proof-name">Memory Bounds</span>
+                                        <span class="proof-status">Verifying...</span>
+                                    </div>
+                                    <div class="proof-item is-pending">
+                                        <span class="proof-icon">&#x25CB;</span>
+                                        <span class="proof-name">WORM Seal</span>
+                                        <span class="proof-status">Pending</span>
+                                    </div>
+                                    <div class="proof-item is-pending">
+                                        <span class="proof-icon">&#x25CB;</span>
+                                        <span class="proof-name">Soundness</span>
+                                        <span class="proof-status">Pending</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Proofs -->
-                <div class="panel panel-proofs">
-                    <div class="panel-header">
-                        <h3 class="panel-title">Proofs</h3>
-                    </div>
-                    <div class="panel-content">
-                        <div class="proof-list">
-                            <div class="proof-item is-verified">
-                                <span class="proof-icon">&#x2713;</span>
-                                <span class="proof-name">Type Safety</span>
-                                <span class="proof-status">Verified</span>
+                        <!-- Observatory Widgets -->
+                        <div class="panel panel-widgets">
+                            <div class="panel-header">
+                                <h3 class="panel-title">Widgets</h3>
+                                <div class="panel-actions">
+                                    <button class="btn btn-mini" id="btn-add-widget">+</button>
+                                </div>
                             </div>
-                            <div class="proof-item is-verified">
-                                <span class="proof-icon">&#x2713;</span>
-                                <span class="proof-name">Termination</span>
-                                <span class="proof-status">Verified</span>
-                            </div>
-                            <div class="proof-item is-verifying">
-                                <span class="proof-icon">&#x23F3;</span>
-                                <span class="proof-name">Memory Bounds</span>
-                                <span class="proof-status">Verifying...</span>
-                            </div>
-                            <div class="proof-item is-pending">
-                                <span class="proof-icon">&#x25CB;</span>
-                                <span class="proof-name">WORM Seal</span>
-                                <span class="proof-status">Pending</span>
+                            <div class="panel-content">
+                                <div class="widget-grid">
+                                    <div class="widget" data-widget="registers">
+                                        <div class="widget-header">
+                                            <span class="widget-title">Registers</span>
+                                        </div>
+                                        <div class="widget-body">
+                                            <div class="register-row">
+                                                <span class="register-name">PC</span>
+                                                <span class="register-value">0x0012</span>
+                                            </div>
+                                            <div class="register-row">
+                                                <span class="register-name">A</span>
+                                                <span class="register-value">0x0078</span>
+                                            </div>
+                                            <div class="register-row">
+                                                <span class="register-name">B</span>
+                                                <span class="register-value">0x0005</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="widget" data-widget="heap">
+                                        <div class="widget-header">
+                                            <span class="widget-title">Heap</span>
+                                        </div>
+                                        <div class="widget-body">
+                                            <div class="heap-bar">
+                                                <div class="heap-used" style="width: 42%">42%</div>
+                                            </div>
+                                            <div class="heap-stats">
+                                                <span>Used: 1.2 MB</span>
+                                                <span>Free: 1.6 MB</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="widget" data-widget="performance">
+                                        <div class="widget-header">
+                                            <span class="widget-title">Performance</span>
+                                        </div>
+                                        <div class="widget-body">
+                                            <div class="perf-stat">
+                                                <span class="perf-label">FPS</span>
+                                                <span class="perf-value">120</span>
+                                            </div>
+                                            <div class="perf-stat">
+                                                <span class="perf-label">Latency</span>
+                                                <span class="perf-value">16ms</span>
+                                            </div>
+                                            <div class="perf-stat">
+                                                <span class="perf-label">Reflow</span>
+                                                <span class="perf-value">8ms</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </footer>
+                </footer>
 
     </div>
 
