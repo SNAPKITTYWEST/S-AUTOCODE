@@ -1,12 +1,13 @@
 // fireworks-ai.js — Fireworks AI Integration for CODEX Agent
 export class FireworksAI {
     constructor() {
-        this.apiKey = 'key_eEDSHgkIYo5hjal14';
-        this.modelPath = 'accounts/ahmedparr93-mr3fh2cp/deployments/o5hjal14';
+        this.apiKey = 'fw_nWm5Lhhp8mbShSuFyJwws';
+        // Use fast serverless model instead of slow deployment
+        this.modelPath = 'accounts/fireworks/models/qwen2p5-coder-32b-instruct';
         this.apiUrl = 'https://api.fireworks.ai/inference/v1/chat/completions';
         this.conversationHistory = [];
         this.isThinking = false;
-        // Use mock responses for now (CORS blocks direct API calls from browser)
+        // Use mock responses (CORS blocks direct API calls from browser)
         this.useMock = true;
     }
 

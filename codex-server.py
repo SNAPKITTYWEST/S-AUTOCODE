@@ -10,8 +10,8 @@ import json
 import urllib.request
 import urllib.error
 
-FIREWORKS_API_KEY = "key_eEDSHgkIYo5hjal14"
-MODEL_PATH = "accounts/ahmedparr93-mr3fh2cp/deployments/o5hjal14"
+FIREWORKS_API_KEY = "fw_nWm5Lhhp8mbShSuFyJwws"
+MODEL_PATH = "accounts/fireworks/models/qwen2p5-coder-32b-instruct"
 API_URL = "https://api.fireworks.ai/inference/v1/chat/completions"
 
 class CodexHandler(BaseHTTPRequestHandler):
