@@ -97,18 +97,44 @@ What would you like help with?`;
         const toolKeywords = [
             'run', 'execute', 'command', 'bash', 'git', 'npm',
             'read file', 'write file', 'create file', 'list files',
-            'search', 'find', 'grep', 'analyze'
+            'search', 'find', 'grep', 'analyze',
+            'open editor', 'open browser', 'navigate', 'go to', 'show'
         ];
         return toolKeywords.some(keyword => lower.includes(keyword));
     }
 
     async handleToolUse(message, lower) {
+        // Open Editor
+        if (lower.includes('open editor') || lower.includes('edit file')) {
+            const file = message.match(/(?:open editor|edit file|edit)\s+(\S+)/i)?.[1] || 'untitled.js';
+            const result = await this.tools.openEditor(file);
+            return `✅ ${result.message}\n\nMonaco Editor is now open. You can start coding!`;
+        }
+        
+        // Open Browser/KittyBrowse
+        if (lower.includes('open browser') || lower.includes('browse') || lower.includes('open url')) {
+            const url = message.match(/(?:open browser|browse|open url)\s+(\S+)/i)?.[1] || 'https://example.com';
+            const result = await this.tools.openBrowser(url);
+            return `✅ ${result.message}\n\nKittyBrowse sandbox is now showing the page.`;
+        }
+        
+        // Navigate routes
+        if (lower.includes('go to') || lower.includes('navigate to') || lower.includes('show')) {
+            const routeMatch = message.match(/(?:go to|navigate to|show)\s+(observatory|editor|sandbox|agents|proofs|worm|deploy)/i);
+            if (routeMatch) {
+                const route = '/' + routeMatch[1].toLowerCase();
+                const result = await this.tools.navigateRoute(route);
+                return `✅ ${result.message}`;
+            }
+        }
+        
         // Execute command
         if (lower.includes('run ') || lower.includes('execute ')) {
             const command = message.match(/(?:run|execute)\s+(.+)/i)?.[1];
             if (command) {
                 const result = await this.tools.executeCommand(command);
-                return `**Command:** \`${result.command}\`\n\n**Output:**\n\`\`\`\n${result.output}\n\`\`\`\n\n**Exit code:** ${result.exitCode}`;
+                const realBadge = result.real ? '🔴 REAL BASH' : '🟡 SIMULATED';
+                return `**Command:** \`${result.command}\` ${realBadge}\n\n**Output:**\n\`\`\`\n${result.output}\n\`\`\`\n\n**Exit code:** ${result.exitCode}`;
             }
         }
         

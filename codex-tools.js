@@ -1,10 +1,13 @@
 // codex-tools.js — Tool system for CODEX agent
-// Gives CODEX the same capabilities as Claude: bash, file ops, code analysis
+// Real integration with S-AUTOCODE UI, Monaco Editor, and bash execution
 
 export class CodexTools {
     constructor() {
         this.tools = {
             execute_command: this.executeCommand.bind(this),
+            open_editor: this.openEditor.bind(this),
+            open_browser: this.openBrowser.bind(this),
+            navigate_route: this.navigateRoute.bind(this),
             read_file: this.readFile.bind(this),
             write_file: this.writeFile.bind(this),
             list_files: this.listFiles.bind(this),
@@ -13,23 +16,132 @@ export class CodexTools {
             analyze_code: this.analyzeCode.bind(this)
         };
         this.commandHistory = [];
-        this.fileSystem = new Map(); // Virtual filesystem for demo
+        this.fileSystem = new Map();
+        this.bashInBashOut = null; // Will be set by main app
     }
 
-    // Execute bash/shell commands
+    // Set bash execution handler (from main app)
+    setBashHandler(handler) {
+        this.bashInBashOut = handler;
+    }
+
+    // Open Monaco Editor with file
+    async openEditor(filePath, content = '') {
+        console.log(`[CODEX] Opening editor: ${filePath}`);
+        
+        // Navigate to editor route
+        if (window.location.hash !== '#/editor') {
+            window.location.hash = '#/editor';
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Get Monaco editor instance
+        const editorContent = document.getElementById('editor-content');
+        if (!editorContent) {
+            return { success: false, error: 'Editor not found' };
+        }
+        
+        // Create Monaco editor if not exists
+        if (!window.monacoEditor) {
+            // Monaco should be loaded by monaco-loader.js
+            return { success: false, error: 'Monaco not initialized yet' };
+        }
+        
+        // Set content
+        if (window.monacoEditor.setValue) {
+            window.monacoEditor.setValue(content || `// ${filePath}\n// Edit your code here\n`);
+        }
+        
+        return {
+            success: true,
+            file: filePath,
+            message: `Opened ${filePath} in Monaco Editor`
+        };
+    }
+
+    // Open KittyBrowse sandbox with URL
+    async openBrowser(url) {
+        console.log(`[CODEX] Opening browser: ${url}`);
+        
+        // Navigate to sandbox route
+        if (window.location.hash !== '#/sandbox') {
+            window.location.hash = '#/sandbox';
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Create iframe for KittyBrowse
+        const sandboxContent = document.querySelector('.sandbox-panels');
+        if (!sandboxContent) {
+            return { success: false, error: 'Sandbox not found' };
+        }
+        
+        // Add browser iframe
+        const browserPanel = document.createElement('div');
+        browserPanel.className = 'sandbox-browser';
+        browserPanel.innerHTML = `
+            <div class="panel-header">
+                <h3 class="panel-title">KittyBrowse: ${url}</h3>
+                <button class="btn btn-mini" onclick="this.parentElement.parentElement.remove()">✕</button>
+            </div>
+            <iframe src="${url}" style="width:100%;height:600px;border:none;background:white;"></iframe>
+        `;
+        sandboxContent.appendChild(browserPanel);
+        
+        return {
+            success: true,
+            url,
+            message: `Opened ${url} in KittyBrowse sandbox`
+        };
+    }
+
+    // Navigate to different routes
+    async navigateRoute(route) {
+        console.log(`[CODEX] Navigating to: ${route}`);
+        
+        const validRoutes = ['/observatory', '/editor', '/sandbox', '/agents', '/proofs', '/worm', '/deploy'];
+        if (!validRoutes.includes(route)) {
+            return { success: false, error: `Invalid route: ${route}` };
+        }
+        
+        window.location.hash = '#' + route;
+        
+        return {
+            success: true,
+            route,
+            message: `Navigated to ${route}`
+        };
+    }
+
+    // Execute bash/shell commands (real bash-in-bash-out when available)
     async executeCommand(command) {
         console.log(`[CODEX] Executing: ${command}`);
         this.commandHistory.push({ command, timestamp: Date.now() });
 
-        // Simulate command execution (in browser, we can't run real bash)
-        // In production, this would call a backend API
+        // Try real bash execution first
+        if (this.bashInBashOut) {
+            try {
+                const result = await this.bashInBashOut(command);
+                return {
+                    success: true,
+                    command,
+                    output: result.output || result,
+                    exitCode: result.exitCode || 0,
+                    real: true
+                };
+            } catch (error) {
+                console.warn('[CODEX] Real bash failed, using simulation:', error);
+            }
+        }
+
+        // Fallback to simulation
         const output = this.simulateCommand(command);
         
         return {
             success: true,
             command,
             output,
-            exitCode: 0
+            exitCode: 0,
+            real: false
         };
     }
 
