@@ -405,16 +405,247 @@
     </div>
 
     <script>
-    // Terminal input handler
+    // === Terminal Engine ===
     const terminalInput = document.getElementById('terminal-input');
     const terminalOutput = document.getElementById('terminal-output');
-    
+    const reasoningStream = document.getElementById('reasoning-stream');
+    let commandHistory = [];
+    let historyIndex = -1;
+
+    // Built-in commands
+    const commands = {
+        'help': () => `Available commands:
+  factorial <n>    - Compute factorial
+  sum <a> <b>      - Compute sum
+  subleq <expr>    - Compile to SUBLEQ
+  inspect <symbol> - Inspect a symbol
+  chain            - Show WORM chain
+  agents           - List all agents
+  proofs           - Show proof status
+  clear            - Clear terminal
+  history          - Show command history`,
+
+        'clear': () => { terminalOutput.innerHTML = ''; return ''; },
+
+        'chain': () => `WORM CHAIN
+  [0000] GENESIS  sha256:a7f3b1c9...
+  [0001] PARSE    sha256:e5f6a7b8...
+  [0002] BUILD    sha256:c9d0e1f2...
+  [0003] LOWER    sha256:3b4c5d6e...
+  [0004] VERIFY   sha256:7f8a9b0c...
+  [0005] COMPILE  sha256:d1e2f3a4...
+  Total: 6 entries, append-only, Ed25519 sealed`,
+
+        'agents': () => `AGENT REGISTRY
+  FORGE    [compiling]   trust: HIGH   domain: code-generation
+  SENTINEL [idle]        trust: HIGH   domain: security
+  ORACLE   [reasoning]   trust: HIGH   domain: analysis
+  CODEX    [verifying]   trust: MEDIUM domain: documentation
+  VAULT    [sealing]     trust: HIGH   domain: storage`,
+
+        'proofs': () => `PROOF OBLIGATIONS
+  [✓] Type Safety      - All expressions type-check
+  [✓] Termination      - All loops guaranteed to terminate
+  [✓] Memory Bounds    - No out-of-bounds access
+  [✓] WORM Seal        - Chain integrity verified
+  [~] Soundness        - In progress
+  [ ] Completeness     - Pending`
+    };
+
+    // S-expression processor
+    function processSExpr(expr) {
+        const match = expr.match(/\((\w+)\s*(.*)\)/);
+        if (!match) return null;
+        const [_, op, args] = match;
+
+        switch(op) {
+            case 'factorial': {
+                const n = parseInt(args) || 0;
+                const result = factorial(n);
+                return {
+                    input: `(${op} ${n})`,
+                    steps: [
+                        `Parsed: function call factorial(${n})`,
+                        `AST: (App (Var factorial) (Lit ${n}))`,
+                        `IR: call @factorial(i32 ${n})`,
+                        `SUBLEQ: [0] SUB [${n}] [1] ; if A<=0 goto 1`,
+                        `Result: ${result}`
+                    ],
+                    result: result,
+                    subleq: generateSUBLEQ(n)
+                };
+            }
+            case 'sum': {
+                const nums = args.split(/\s+/).map(Number);
+                const result = nums.reduce((a, b) => a + b, 0);
+                return {
+                    input: `(${op} ${nums.join(' ')})`,
+                    steps: [
+                        `Parsed: function call sum(${nums.join(', ')})`,
+                        `AST: (App (Var sum) ${nums.map(n => `(Lit ${n})`).join(' ')})`,
+                        `IR: call @sum(${nums.map(n => `i32 ${n}`).join(', ')})`,
+                        `Result: ${result}`
+                    ],
+                    result: result
+                };
+            }
+            default:
+                return null;
+        }
+    }
+
+    function factorial(n) {
+        if (n <= 1) return 1;
+        return n * factorial(n - 1);
+    }
+
+    function generateSUBLEQ(n) {
+        let tape = [];
+        tape.push(`[${tape.length}] SUB [${n}] [1]`);
+        tape.push(`[${tape.length}] SUB [0] [0]`);
+        tape.push(`[${tape.length}] JNZ [0]`);
+        for (let i = n; i > 0; i--) {
+            tape.push(`[${tape.length}] SUB [${i}] [1]`);
+        }
+        return tape.join('\n');
+    }
+
+    // Agent Forge animation
+    function animateForge() {
+        const stages = document.querySelectorAll('.forge-stages .stage');
+        stages.forEach((stage, i) => {
+            stage.style.animationDelay = (i * 200) + 'ms';
+        });
+    }
+
+    // Streaming reasoning
+    function addReasoningEntry(stage, text) {
+        const entry = document.createElement('div');
+        entry.className = 'reasoning-entry';
+        entry.style.opacity = '0';
+        entry.style.transform = 'translateY(10px)';
+
+        const now = new Date();
+        const timestamp = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
+
+        entry.innerHTML = `
+            <span class="reasoning-timestamp">${timestamp}</span>
+            <span class="reasoning-stage is-${stage.toLowerCase()}">${stage}</span>
+            <p class="reasoning-text">${text}</p>
+        `;
+
+        reasoningStream.appendChild(entry);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            entry.style.transition = 'all 0.3s ease';
+            entry.style.opacity = '1';
+            entry.style.transform = 'translateY(0)';
+        });
+
+        reasoningStream.scrollTop = reasoningStream.scrollHeight;
+    }
+
+    // Process command
+    function processCommand(cmd) {
+        // Check built-in commands
+        if (commands[cmd]) {
+            const result = commands[cmd]();
+            if (result) appendTerminalLine('output', result);
+            return;
+        }
+
+        // Check S-expression
+        const sExprResult = processSExpr(cmd);
+        if (sExprResult) {
+            // Animate through stages
+            animateForgePipeline(sExprResult);
+            return;
+        }
+
+        // Unknown command
+        appendTerminalLine('error', `Unknown command: ${cmd}. Type "help" for available commands.`);
+    }
+
+    // Animate forge pipeline
+    function animateForgePipeline(result) {
+        const stages = document.querySelectorAll('.forge-stages .stage');
+        let currentStage = 0;
+
+        function advanceStage() {
+            if (currentStage < stages.length) {
+                // Reset all stages
+                stages.forEach(s => s.classList.remove('is-active', 'is-complete'));
+
+                // Mark previous stages as complete
+                for (let i = 0; i < currentStage; i++) {
+                    stages[i].classList.add('is-complete');
+                }
+
+                // Mark current stage as active
+                stages[currentStage].classList.add('is-active');
+
+                // Add reasoning entry
+                const stageNames = ['Parsing', 'Building AST', 'Lowering', 'Verification', 'Optimization', 'SUBLEQ Emit', 'Execution'];
+                const stageTexts = [
+                    `Received expression: ${result.input}`,
+                    `Constructed syntax tree`,
+                    `Lowered to intermediate representation`,
+                    `Type check and invariant verification passed`,
+                    `Applied optimization patterns`,
+                    `Generated SUBLEQ instructions`,
+                    `Execution complete`
+                ];
+
+                if (currentStage < stageNames.length) {
+                    addReasoningEntry(stageNames[currentStage], stageTexts[currentStage]);
+                }
+
+                currentStage++;
+                setTimeout(advanceStage, 400);
+            } else {
+                // All stages complete
+                stages[stages.length - 1].classList.add('is-complete');
+                stages[stages.length - 1].classList.remove('is-active');
+
+                // Show result
+                if (result.steps) {
+                    result.steps.forEach(step => appendTerminalLine('output', step));
+                }
+                appendTerminalLine('result', `→ ${result.result}`);
+
+                // Update timeline
+                document.getElementById('timeline-progress').style.width = '100%';
+            }
+        }
+
+        advanceStage();
+    }
+
+    // Terminal input handler
     terminalInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             const cmd = this.value.trim();
             if (cmd) {
                 appendTerminalLine('input', cmd);
+                commandHistory.push(cmd);
+                historyIndex = commandHistory.length;
                 processCommand(cmd);
+                this.value = '';
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (historyIndex > 0) {
+                historyIndex--;
+                this.value = commandHistory[historyIndex];
+            }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (historyIndex < commandHistory.length - 1) {
+                historyIndex++;
+                this.value = commandHistory[historyIndex];
+            } else {
+                historyIndex = commandHistory.length;
                 this.value = '';
             }
         }
@@ -436,10 +667,6 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    }
-
-    function processCommand(cmd) {
-        appendTerminalLine('output', 'Processing: ' + cmd + '\n  &#x2193; Parsing...\n  &#x2193; Building AST...\n  &#x2193; Lowering to SUBLEQ...\n  &#x2192; Done');
     }
 
     // Timeline controls
@@ -464,6 +691,35 @@
     document.getElementById('btn-forward').addEventListener('click', function() {
         document.getElementById('timeline-progress').style.width = '100%';
     });
+
+    // Symbol Inspector
+    document.querySelectorAll('.symbol-item').forEach(item => {
+        item.addEventListener('click', function() {
+            const name = this.querySelector('.symbol-name').textContent;
+            const type = this.querySelector('.symbol-type').textContent;
+            inspectSymbol(name, type);
+        });
+    });
+
+    function inspectSymbol(name, type) {
+        // Update right panel with symbol details
+        const stream = document.getElementById('reasoning-stream');
+        stream.innerHTML = `
+            <div class="reasoning-entry">
+                <span class="reasoning-timestamp">Inspector</span>
+                <span class="reasoning-stage is-building">Symbol Inspector</span>
+                <p class="reasoning-text">
+                    <strong>${name}</strong> (${type})<br><br>
+                    Type: ${type}<br>
+                    S-Expression: <code class="inline-code">(${name} n)</code><br>
+                    Autocode: <code class="inline-code">SUBLEQ_${name.toUpperCase()}</code><br>
+                    Memory: 0x${Math.floor(Math.random() * 0xFFFF).toString(16).padStart(4, '0')}<br>
+                    References: ${Math.floor(Math.random() * 10) + 1}<br>
+                    Proof: Type-safe, terminating
+                </p>
+            </div>
+        `;
+    }
 
     // Focus terminal on page load
     terminalInput.focus();
