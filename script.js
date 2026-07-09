@@ -307,10 +307,9 @@ function getAgentResponse(agent, msg) {
         return 'I can analyze programs, detect bugs, and verify correctness. Describe what you want to analyze.';
     }
     
-    // CODEX: AI Coder (Fireworks AI)
+    // CODEX: AI Coder (Fireworks AI) - handled in sendChat(), should never reach here
     if (agent === 'codex') {
-        // Use real Fireworks AI for CODEX
-        return '🔥 Connecting to Fireworks AI...';
+        return 'CODEX is powered by Fireworks AI. This message should not appear - please report this bug.';
     }
     
     // VAULT: Storage
