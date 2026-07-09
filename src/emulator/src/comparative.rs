@@ -79,8 +79,8 @@ pub fn compare_execution(
             branches_not_taken: subleq.trace.iter().filter(|s| !s.branch_taken).count(),
             memory_reads: subleq.trace.len() * 2,
             memory_writes: subleq.trace.len(),
-            final_memory: subleq_memory,
-            trace: subleq.trace,
+            final_memory: subleq.get_memory_i32().into_iter().enumerate().map(|(i,v)| (i,v)).collect(),
+            trace: subleq.legacy_steps(),
         },
         equivalence,
     }
@@ -88,13 +88,13 @@ pub fn compare_execution(
 
 fn extract_manchester_memory(cpu: &CpuState, symtab: &SymbolTable) -> Vec<(usize, i32)> {
     symtab.all_symbols().into_iter()
-        .map(|(name, addr)| (addr.0, cpu.get_memory()[addr.0]))
+        .map(|(_name, addr)| (addr.0, cpu.get_memory()[addr.0]))
         .collect()
 }
 
 fn extract_subleq_memory(machine: &SubleqMachine, symtab: &SymbolTable) -> Vec<(usize, i32)> {
     symtab.all_symbols().into_iter()
-        .map(|(name, addr)| (addr.0, machine.get_memory()[addr.0]))
+        .map(|(_name, addr)| (addr.0, machine.get_memory()[addr.0] as i32))
         .collect()
 }
 
@@ -103,7 +103,7 @@ fn check_equivalence(
     sub: &[(usize, i32)],
 ) -> EquivalenceCheck {
     let mut diffs = Vec::new();
-    for ((addr1, val1), (addr2, val2)) in man.iter().zip(sub.iter()) {
+    for ((addr1, val1), (_addr2, val2)) in man.iter().zip(sub.iter()) {
         if val1 != val2 {
             diffs.push((*addr1, *val1, *val2));
         }

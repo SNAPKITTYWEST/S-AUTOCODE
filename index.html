@@ -3,126 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>S-AUTOCODE | Project PRIMUS</title>
+    <title>S-AUTOCODE | Self-Modifying Terminal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg: #0a0a0a;
             --bg-light: #1a1a1a;
+            --bg-mid: #111;
             --green: #00ff41;
             --amber: #ffb000;
             --red: #ff0040;
+            --cyan: #00e5ff;
+            --magenta: #ff00ff;
             --white: #e0e0e0;
-            --dim: #404040;
+            --dim: #555;
             --border: #333;
+            --green-dim: rgba(0,255,65,0.15);
+            --amber-dim: rgba(255,176,0,0.15);
+            --red-dim: rgba(255,0,64,0.15);
+            --selfmod: #ff00ff;
+            --selfmod-dim: rgba(255,0,255,0.15);
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin:0; padding:0; box-sizing:border-box; }
         body {
             font-family: 'JetBrains Mono', monospace;
             background: var(--bg);
             color: var(--green);
-            min-height: 100vh;
-            overflow-x: hidden;
+            height: 100vh;
+            overflow: hidden;
         }
         .scanline {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1000;
-            background: repeating-linear-gradient(
-                0deg,
-                rgba(0, 255, 65, 0.03) 0px,
-                rgba(0, 255, 65, 0.03) 1px,
-                transparent 1px,
-                transparent 3px
-            );
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            pointer-events:none; z-index:1000;
+            background: repeating-linear-gradient(0deg,
+                rgba(0,255,65,0.02) 0px, rgba(0,255,65,0.02) 1px,
+                transparent 1px, transparent 3px);
         }
+
+        /* LAYOUT */
+        .app { display:flex; flex-direction:column; height:100vh; }
         header {
-            border-bottom: 2px solid var(--green);
-            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--green);
+            padding: 0.4rem 1rem;
+            display:flex; justify-content:space-between; align-items:center;
+            flex-shrink:0;
+        }
+        header h1 { font-size:0.9rem; letter-spacing:2px; color:var(--amber); }
+        header .mode { font-size:0.7rem; color:var(--dim); }
+        .main { display:flex; flex:1; overflow:hidden; }
+
+        /* LEFT: TERMINAL */
+        .terminal-col {
+            flex: 1;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
         }
-        header h1 { font-size: 1.2rem; letter-spacing: 2px; }
-        .toggle-container {
+        .terminal-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem 1rem;
+            font-size: 0.78rem;
+            line-height: 1.5;
+        }
+        .terminal-output .line { white-space: pre-wrap; word-break: break-all; }
+        .terminal-output .line.input { color: var(--white); }
+        .terminal-output .line.info { color: var(--dim); }
+        .terminal-output .line.error { color: var(--red); }
+        .terminal-output .line.result { color: var(--cyan); }
+        .terminal-output .line.selfmod { color: var(--selfmod); }
+        .terminal-output .line.ok { color: var(--green); }
+        .terminal-output .line.banner { color: var(--amber); }
+        .terminal-input-row {
             display: flex;
-            align-items: center;
-            gap: 1rem;
+            border-top: 1px solid var(--green);
+            padding: 0.4rem 1rem;
+            flex-shrink: 0;
         }
-        .toggle {
-            width: 60px;
-            height: 30px;
-            background: var(--bg-light);
-            border: 1px solid var(--green);
-            border-radius: 15px;
-            cursor: pointer;
-            position: relative;
-            transition: background 0.3s;
+        .terminal-input-row .prompt { color: var(--amber); margin-right: 0.5rem; white-space:nowrap; }
+        .terminal-input-row input {
+            flex:1; background:transparent; border:none; outline:none;
+            color:var(--green); font-family:inherit; font-size:0.85rem;
+            caret-color: var(--green);
         }
-        .toggle.active { background: var(--green); }
-        .toggle::after {
-            content: '';
-            position: absolute;
-            width: 24px;
-            height: 24px;
-            background: var(--bg);
-            border: 1px solid var(--green);
-            border-radius: 50%;
-            top: 2px;
-            left: 2px;
-            transition: transform 0.3s;
-        }
-        .toggle.active::after { transform: translateX(30px); }
-        .toggle-label { font-size: 0.8rem; color: var(--dim); }
-        .main {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
-            gap: 1px;
-            background: var(--border);
-            height: calc(100vh - 60px);
+
+        /* RIGHT: PANELS */
+        .panels-col {
+            width: 420px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         .panel {
-            background: var(--bg);
-            padding: 1rem;
+            border-bottom: 1px solid var(--border);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
         .panel-header {
-            border-bottom: 1px solid var(--green);
-            padding-bottom: 0.5rem;
-            margin-bottom: 1rem;
-            font-size: 0.9rem;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.7rem;
             color: var(--amber);
+            border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
+            flex-shrink: 0;
+            background: var(--bg-light);
         }
-        .panel-content {
-            flex: 1;
+        .panel-body {
+            padding: 0.4rem 0.8rem;
             overflow-y: auto;
-            font-size: 0.8rem;
-            line-height: 1.6;
+            font-size: 0.7rem;
+            line-height: 1.5;
+            flex: 1;
         }
-        pre {
-            font-family: 'JetBrains Mono', monospace;
-            white-space: pre-wrap;
-            word-break: break-all;
+
+        /* STACK PANEL */
+        .stack-panel { max-height: 120px; }
+        .stack-row { display:flex; gap:0.4rem; flex-wrap:wrap; }
+        .stack-cell {
+            padding: 0.15rem 0.4rem;
+            border: 1px solid var(--green);
+            font-size: 0.75rem;
         }
-        .code-line {
-            padding: 0.2rem 0.5rem;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .code-line:hover, .code-line.active {
-            background: rgba(0, 255, 65, 0.1);
-            border-left: 2px solid var(--green);
-        }
+        .stack-cell.top { background: var(--green); color: var(--bg); }
+        .stack-empty { color: var(--dim); font-style:italic; }
+
+        /* MEMORY GRID */
         .memory-grid {
             display: grid;
             grid-template-columns: repeat(16, 1fr);
@@ -130,347 +138,944 @@
         }
         .mem-cell {
             aspect-ratio: 1;
-            background: var(--bg-light);
+            background: var(--bg);
             border: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.6rem;
-            transition: all 0.3s;
+            font-size: 0.5rem;
+            transition: all 0.15s;
+            cursor: default;
         }
-        .mem-cell.active {
-            background: var(--green);
-            color: var(--bg);
-            box-shadow: 0 0 10px var(--green);
+        .mem-cell.nonzero { border-color: var(--dim); color: var(--white); }
+        .mem-cell.read { border-color: var(--amber); background: var(--amber-dim); }
+        .mem-cell.write { border-color: var(--red); background: var(--red-dim); }
+        .mem-cell.selfmod {
+            border-color: var(--selfmod);
+            background: var(--selfmod-dim);
+            box-shadow: 0 0 6px var(--selfmod);
+            animation: selfmod-pulse 0.6s ease-out;
         }
-        .mem-cell.read {
-            border-color: var(--amber);
+        .mem-cell.pc { border-color: var(--cyan); background: rgba(0,229,255,0.1); }
+        @keyframes selfmod-pulse {
+            0% { box-shadow: 0 0 12px var(--selfmod); }
+            100% { box-shadow: 0 0 2px var(--selfmod); }
         }
-        .mem-cell.write {
-            border-color: var(--red);
+
+        /* TRACE PANEL */
+        .trace-panel { flex: 1; min-height: 0; }
+        .trace-step {
+            padding: 0.15rem 0.3rem;
+            border-bottom: 1px solid #222;
+            font-size: 0.65rem;
+            display: flex;
+            gap: 0.5rem;
         }
-        .drum-viz {
-            position: relative;
-            width: 200px;
-            height: 200px;
-            margin: 0 auto;
+        .trace-step.current { background: rgba(0,255,65,0.08); }
+        .trace-step .step-pc { color: var(--cyan); min-width: 3em; }
+        .trace-step .step-op { color: var(--amber); }
+        .trace-step .step-mod { color: var(--selfmod); font-weight: bold; }
+
+        /* SELF-MOD PANEL */
+        .selfmod-panel { max-height: 140px; }
+        .selfmod-entry {
+            padding: 0.15rem 0.3rem;
+            border-bottom: 1px solid #222;
+            font-size: 0.65rem;
         }
-        .drum-ring {
-            position: absolute;
-            border: 2px solid var(--green);
-            border-radius: 50%;
-            animation: rotate 4s linear infinite;
-        }
-        .drum-ring.outer { width: 200px; height: 200px; }
-        .drum-ring.inner { width: 120px; height: 120px; top: 40px; left: 40px; animation-direction: reverse; }
-        .drum-head {
-            position: absolute;
-            width: 4px;
-            height: 40px;
-            background: var(--amber);
-            top: 0;
-            left: 98px;
-            transform-origin: bottom center;
-            animation: sweep 2s linear infinite;
-        }
-        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        @keyframes sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .benchmark-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.75rem;
-        }
-        .benchmark-table th, .benchmark-table td {
-            border: 1px solid var(--border);
-            padding: 0.5rem;
-            text-align: left;
-        }
-        .benchmark-table th {
-            background: var(--bg-light);
-            color: var(--amber);
-        }
-        .benchmark-table tr:hover {
-            background: rgba(0, 255, 65, 0.05);
-        }
-        .latency-bar {
-            height: 8px;
-            background: var(--bg-light);
-            border: 1px solid var(--border);
-            margin-top: 4px;
-        }
-        .latency-fill {
-            height: 100%;
-            background: var(--green);
-            transition: width 0.5s;
-        }
+        .selfmod-entry .addr { color: var(--selfmod); }
+        .selfmod-entry .vals { color: var(--dim); }
+
+        /* STATUS */
         .status {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
             border-top: 1px solid var(--green);
-            padding: 0.5rem 2rem;
-            font-size: 0.7rem;
+            padding: 0.25rem 1rem;
+            font-size: 0.65rem;
             color: var(--dim);
             display: flex;
             justify-content: space-between;
+            flex-shrink: 0;
         }
         .status .live { color: var(--green); animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-        .upload-zone {
-            border: 2px dashed var(--border);
-            padding: 2rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .upload-zone:hover {
-            border-color: var(--green);
-            background: rgba(0, 255, 65, 0.05);
-        }
-        .execution-step {
-            padding: 0.3rem;
-            border-bottom: 1px solid var(--border);
-        }
-        .execution-step.current {
-            background: rgba(0, 255, 65, 0.1);
-            border-left: 2px solid var(--green);
-        }
-        ::-webkit-scrollbar { width: 4px; }
+        @keyframes blink { 50%{opacity:0.5} }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: var(--bg); }
         ::-webkit-scrollbar-thumb { background: var(--green); }
+
+        /* HEX LABELS */
+        .hex-labels {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 1px;
+            margin-bottom: 2px;
+        }
+        .hex-label {
+            text-align: center;
+            font-size: 0.45rem;
+            color: var(--dim);
+        }
     </style>
 </head>
 <body>
-    <div class="scanline"></div>
-    
+<div class="scanline"></div>
+<div class="app">
     <header>
-        <h1>┌─ S-AUTOCODE ─┐ Project PRIMUS</h1>
-        <div class="toggle-container">
-            <span class="toggle-label">1952 Manchester</span>
-            <div class="toggle" id="timeTravelToggle" onclick="toggleTimeTravel()"></div>
-            <span class="toggle-label">2050 OISA</span>
+        <h1>S-AUTOCODE // SELF-MODIFYING TERMINAL</h1>
+        <div class="mode">
+            <span id="modeLabel">STACK</span> |
+            SUBLEQ unified tape |
+            <span id="instrCount">0</span> instr |
+            <span id="stepCount">0</span> steps
         </div>
     </header>
-    
+
     <div class="main">
-        <!-- Code Editor Panel -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>AUTOCODE EDITOR</span>
-                <span id="lineCount">0 lines</span>
-            </div>
-            <div class="panel-content" id="codeEditor">
-                <div class="code-line" data-line="0">+100 200 2</div>
-                <div class="code-line" data-line="1">-100 200 3</div>
-                <div class="code-line" data-line="2">+200 100 2</div>
-                <div class="code-line" data-line="3">-200 100 5</div>
-                <div class="code-line" data-line="4">+300 100 6</div>
-                <div class="code-line" data-line="5">+2 0 0</div>
+        <!-- TERMINAL -->
+        <div class="terminal-col">
+            <div class="terminal-output" id="termOutput"></div>
+            <div class="terminal-input-row">
+                <span class="prompt">s&gt;</span>
+                <input type="text" id="termInput" autocomplete="off" spellcheck="false"
+                       placeholder="type Autocode: +100 200 2  |  stack: DUP SWAP DROP  |  run: EXEC  |  help">
             </div>
         </div>
-        
-        <!-- Memory Visualization Panel -->
-        <div class="panel">
-            <div class="panel-header">
-                <span id="vizTitle">MAGNETIC DRUM STATE</span>
-                <span id="latencyDisplay">Latency: 0 μs</span>
-            </div>
-            <div class="panel-content">
-                <div class="drum-viz" id="drumViz">
-                    <div class="drum-ring outer"></div>
-                    <div class="drum-ring inner"></div>
-                    <div class="drum-head"></div>
+
+        <!-- RIGHT PANELS -->
+        <div class="panels-col">
+            <!-- STACK -->
+            <div class="panel stack-panel">
+                <div class="panel-header">
+                    <span>STACK</span>
+                    <span id="stackDepth">depth: 0</span>
                 </div>
-                <div class="memory-grid" id="memoryGrid"></div>
-            </div>
-        </div>
-        
-        <!-- Execution Trace Panel -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>EXECUTION TRACE</span>
-                <span id="stepCounter">Step 0/0</span>
-            </div>
-            <div class="panel-content" id="executionTrace">
-                <div class="execution-step">PC: 0 | SUBLEQ [100], [201] → 2</div>
-                <div class="execution-step">PC: 1 | SUBLEQ [100], [201] → 3</div>
-                <div class="execution-step current">PC: 2 | SUBLEQ [200], [101] → 2</div>
-            </div>
-        </div>
-        
-        <!-- Benchmarks Panel -->
-        <div class="panel">
-            <div class="panel-header">
-                <span>CLAIRVOYANCE BENCHMARKS</span>
-                <span class="live">● LIVE</span>
-            </div>
-            <div class="panel-content">
-                <table class="benchmark-table">
-                    <thead>
-                        <tr>
-                            <th>Program</th>
-                            <th>Instructions</th>
-                            <th>Original Latency</th>
-                            <th>Optimized Latency</th>
-                            <th>Reduction</th>
-                        </tr>
-                    </thead>
-                    <tbody id="benchmarkBody">
-                        <tr>
-                            <td>simple_add.ac</td>
-                            <td>3</td>
-                            <td>48,000 μs</td>
-                            <td>48,000 μs</td>
-                            <td>0.0%</td>
-                        </tr>
-                        <tr>
-                            <td>multiply.ac</td>
-                            <td>6</td>
-                            <td>96,000 μs</td>
-                            <td>72,000 μs</td>
-                            <td>25.0%</td>
-                        </tr>
-                        <tr>
-                            <td>factorial.ac</td>
-                            <td>4</td>
-                            <td>64,000 μs</td>
-                            <td>48,000 μs</td>
-                            <td>25.0%</td>
-                        </tr>
-                        <tr>
-                            <td>fibonacci.ac</td>
-                            <td>7</td>
-                            <td>112,000 μs</td>
-                            <td>80,000 μs</td>
-                            <td>28.6%</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div style="margin-top: 1rem;">
-                    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
-                        DROP .AC FILE TO BENCHMARK
-                        <input type="file" id="fileInput" accept=".ac" style="display:none" onchange="handleUpload(event)">
-                    </div>
+                <div class="panel-body" id="stackDisplay">
+                    <div class="stack-empty">empty</div>
                 </div>
+            </div>
+
+            <!-- MEMORY GRID -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>MEMORY (SUBLEQ TAPE)</span>
+                    <span id="memInfo">0/1024 used</span>
+                </div>
+                <div class="panel-body">
+                    <div class="hex-labels" id="hexLabels"></div>
+                    <div class="memory-grid" id="memoryGrid"></div>
+                </div>
+            </div>
+
+            <!-- SELF-MODIFICATION -->
+            <div class="panel selfmod-panel">
+                <div class="panel-header">
+                    <span style="color:var(--selfmod)">SELF-MODIFICATION</span>
+                    <span id="selfModCount">0 writes</span>
+                </div>
+                <div class="panel-body" id="selfModDisplay">
+                    <div class="stack-empty">no self-modification detected</div>
+                </div>
+            </div>
+
+            <!-- TRACE -->
+            <div class="panel trace-panel">
+                <div class="panel-header">
+                    <span>EXECUTION TRACE</span>
+                    <span id="traceInfo">0 steps</span>
+                </div>
+                <div class="panel-body" id="traceDisplay"></div>
             </div>
         </div>
     </div>
-    
+
     <div class="status">
-        <span>S-AUTOCODE v0.1 | Project PRIMUS | SNAPKITTYWEST</span>
-        <span id="clock"></span>
+        <span>S-AUTOCODE v0.2 | SUBLEQ + Self-Mod | SNAPKITTYWEST</span>
+        <span><span class="live">LIVE</span> | <span id="clock"></span></span>
     </div>
-    
-    <script>
-        let timeTravelMode = false;
-        let currentStep = 0;
-        const memory = new Array(256).fill(0);
-        
-        // Initialize memory grid
-        function initMemoryGrid() {
-            const grid = document.getElementById('memoryGrid');
-            grid.innerHTML = '';
-            for (let i = 0; i < 256; i++) {
-                const cell = document.createElement('div');
-                cell.className = 'mem-cell';
-                cell.id = `mem-${i}`;
-                cell.textContent = memory[i];
-                grid.appendChild(cell);
-            }
+</div>
+
+<script>
+// ============================================================
+// WASM BRIDGE - loads autocode-wasm
+// ============================================================
+let wasm = null;
+let wasmLoading = true;
+let wasmError = null;
+
+async function loadWasm() {
+    try {
+        const module = await import('./pkg/autocode_wasm.js');
+        await module.default();
+        wasm = module;
+        wasmLoading = false;
+        banner('WASM loaded. Self-modifying SUBLEQ engine ready.');
+        banner('Type Autocode like: +100 200 2');
+        banner('Stack ops: DUP SWAP DROP OVER + - *');
+        banner('Commands: EXEC  STEP  RESET  STACK  MEM  HELP  EXAMPLES');
+    } catch(e) {
+        wasmLoading = false;
+        wasmError = e;
+        banner('WASM not compiled yet. Running in demo mode.');
+        banner('Run: wasm-pack build src/wasm --target web --out-dir ../../pkg');
+        banner('Then refresh. Type HELP for available commands.');
+    }
+}
+loadWasm();
+
+// ============================================================
+// STATE
+// ============================================================
+let stack = [];
+let memory = new Array(1024).fill(0);
+let programLines = [];
+let lastTrace = [];
+let lastSelfMod = null;
+let currentPc = 0;
+let commandHistory = [];
+let historyIdx = -1;
+
+// ============================================================
+// TERMINAL
+// ============================================================
+const termOutput = document.getElementById('termOutput');
+const termInput = document.getElementById('termInput');
+
+function addLine(text, cls='') {
+    const div = document.createElement('div');
+    div.className = 'line ' + cls;
+    div.textContent = text;
+    termOutput.appendChild(div);
+    termOutput.scrollTop = termOutput.scrollHeight;
+}
+
+function banner(text) { addLine(text, 'banner'); }
+function info(text) { addLine(text, 'info'); }
+function error(text) { addLine(text, 'error'); }
+function result(text) { addLine(text, 'result'); }
+function selfmodLine(text) { addLine(text, 'selfmod'); }
+function ok(text) { addLine(text, 'ok'); }
+
+// ============================================================
+// INPUT HANDLING
+// ============================================================
+termInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        const raw = termInput.value.trim();
+        termInput.value = '';
+        if (!raw) return;
+        commandHistory.unshift(raw);
+        historyIdx = -1;
+        addLine('> ' + raw, 'input');
+        processCommand(raw);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (historyIdx < commandHistory.length - 1) {
+            historyIdx++;
+            termInput.value = commandHistory[historyIdx];
         }
-        
-        // Toggle time travel mode
-        function toggleTimeTravel() {
-            timeTravelMode = !timeTravelMode;
-            const toggle = document.getElementById('timeTravelToggle');
-            const title = document.getElementById('vizTitle');
-            const drumViz = document.getElementById('drumViz');
-            
-            toggle.classList.toggle('active');
-            
-            if (timeTravelMode) {
-                title.textContent = 'SUBLEQ MEMORY GRID';
-                drumViz.style.display = 'none';
-            } else {
-                title.textContent = 'MAGNETIC DRUM STATE';
-                drumViz.style.display = 'block';
-            }
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (historyIdx > 0) {
+            historyIdx--;
+            termInput.value = commandHistory[historyIdx];
+        } else {
+            historyIdx = -1;
+            termInput.value = '';
         }
-        
-        // Highlight code line
-        document.querySelectorAll('.code-line').forEach(line => {
-            line.addEventListener('click', () => {
-                document.querySelectorAll('.code-line').forEach(l => l.classList.remove('active'));
-                line.classList.add('active');
-                const lineNum = parseInt(line.dataset.line);
-                highlightMemoryAccess(lineNum);
-            });
-        });
-        
-        // Highlight memory access
-        function highlightMemoryAccess(lineNum) {
-            document.querySelectorAll('.mem-cell').forEach(cell => {
-                cell.classList.remove('active', 'read', 'write');
-            });
-            
-            const addresses = [
-                lineNum * 3,
-                lineNum * 3 + 1,
-                lineNum * 3 + 2
-            ];
-            
-            addresses.forEach((addr, i) => {
-                const cell = document.getElementById(`mem-${addr}`);
-                if (cell) {
-                    cell.classList.add(i === 0 ? 'read' : i === 1 ? 'write' : 'active');
+    }
+});
+
+// ============================================================
+// COMMAND PROCESSOR
+// ============================================================
+function processCommand(raw) {
+    const upper = raw.toUpperCase().trim();
+
+    if (upper === 'HELP' || upper === '?') return showHelp();
+    if (upper === 'EXAMPLES') return showExamples();
+    if (upper === 'STACK') return showStack();
+    if (upper === 'MEM' || upper === 'MEMORY') return showMemory();
+    if (upper === 'RESET' || upper === 'CLEAR') return doReset();
+    if (upper === 'EXEC' || upper === 'RUN') return doExec();
+    if (upper === 'STEP') return doStep();
+    if (upper === 'ASM') return showAsm();
+    if (upper === 'SELFMOD' || upper === 'SELF-MOD') return showSelfMod();
+
+    // Stack operations
+    if (upper.startsWith('PUSH ')) return doPush(raw.substring(5).trim());
+    if (upper === 'POP' || upper === 'DROP') return doDrop();
+    if (upper === 'DUP') return doDup();
+    if (upper === 'SWAP') return doSwap();
+    if (upper === 'OVER') return doOver();
+    if (upper === 'ROT') return doRot();
+    if (upper === 'NIP') return doNip();
+    if (upper === 'TUCK') return doTuck();
+    if (upper === 'DEPTH') { result('Stack depth: ' + stack.length); return; }
+
+    // Arithmetic
+    if (upper === '+' || upper === 'ADD') return doAdd();
+    if (upper === '-' || upper === 'SUB') return doSub();
+    if (upper === '*' || upper === 'MUL') return doMul();
+    if (upper === '/' || upper === 'DIV') return doDiv();
+    if (upper === 'MOD') return doMod();
+    if (upper === 'AND') return doAnd();
+    if (upper === 'OR') return doOr();
+    if (upper === 'XOR') return doXor();
+    if (upper === 'NOT') return doNot();
+    if (upper === 'NEG') return doNeg();
+    if (upper === 'ABS') return doAbs();
+    if (upper === 'MIN') return doMin();
+    if (upper === 'MAX') return doMax();
+
+    // Memory ops
+    if (upper.startsWith('PEEK ')) return doPeek(raw.substring(5).trim());
+    if (upper.startsWith('POKE ')) return doPoke(raw.substring(5).trim());
+    if (upper === 'DUMP') return doDump();
+
+    // Autocode - try to parse as instruction line
+    if (raw.match(/^[+\-]\d+\s+\d+\s+\d+/)) {
+        return doAddInstruction(raw);
+    }
+
+    // Unknown
+    error('Unknown command: ' + raw + '  (type HELP for commands)');
+}
+
+// ============================================================
+// HELP
+// ============================================================
+function showHelp() {
+    banner('=== S-AUTOCODE TERMINAL ===');
+    info('');
+    info('AUTOCODE INSTRUCTIONS (compile to SUBLEQ):');
+    info('  +addr value next    Add instruction (sign-prefixed)');
+    info('  -addr value next    Subtract instruction');
+    info('  EXEC / RUN          Compile & execute all lines');
+    info('  STEP                Execute one SUBLEQ step');
+    info('  ASM                 Show compiled SUBLEQ assembly');
+    info('  SELFMOD             Show self-modification report');
+    info('');
+    info('STACK OPERATIONS (Forth-style):');
+    info('  PUSH <n>            Push number onto stack');
+    info('  POP / DROP          Remove top');
+    info('  DUP                 Duplicate top');
+    info('  SWAP                Swap top two');
+    info('  OVER                Copy second to top');
+    info('  ROT                 Rotate third to top');
+    info('  DEPTH               Show stack depth');
+    info('');
+    info('ARITHMETIC: +  -  *  /  MOD  AND  OR  XOR  NOT  NEG  ABS  MIN  MAX');
+    info('');
+    info('MEMORY:');
+    info('  PEEK <addr>         Read memory address');
+    info('  POKE <addr> <val>   Write memory address');
+    info('  MEM / MEMORY        Show non-zero memory');
+    info('  DUMP                Dump full memory state');
+    info('');
+    info('OTHER:');
+    info('  EXAMPLES            Load example programs');
+    info('  RESET / CLEAR       Reset all state');
+    info('  HELP / ?            This help');
+    info('');
+    info('SELF-MODIFICATION:');
+    info('  When SUBLEQ writes to an instruction field, the');
+    info('  memory cell pulses magenta. The SELF-MODIFICATION');
+    info('  panel tracks which instruction addresses were');
+    info('  overwritten during execution.');
+}
+
+function showExamples() {
+    banner('=== EXAMPLES ===');
+    info('Type each line, then EXEC to run:');
+    info('');
+    info('SIMPLE ADD (3 instructions):');
+    info('  +3 5 2');
+    info('  -3 0 3');
+    info('  +1 0 0');
+    info('');
+    info('FACTORIAL (4 instructions):');
+    info('  +100 200 0');
+    info('  +1 201 3');
+    info('  -1 200 5');
+    info('  +1 202 0');
+    info('');
+    info('FIBONACCI (7 instructions):');
+    info('  +100 200 3');
+    info('  +200 100 6');
+    info('  +300 100 9');
+    info('  -100 200 12');
+    info('  +2 0 0');
+    info('');
+    info('SELF-MODIFYING QUINE:');
+    info('  +0 1 3');
+    info('  +0 0 6');
+    info('  -1 0 0');
+    info('  (writes to its own instruction fields!)');
+    info('');
+    info('Type the lines above, then EXEC to compile & run.');
+}
+
+// ============================================================
+// STACK OPERATIONS
+// ============================================================
+function doPush(val) {
+    const n = parseInt(val);
+    if (isNaN(n)) { error('Not a number: ' + val); return; }
+    stack.push(n);
+    updateStackDisplay();
+    ok('pushed ' + n);
+}
+
+function doDrop() {
+    if (stack.length === 0) { error('Stack underflow'); return; }
+    stack.pop();
+    updateStackDisplay();
+}
+
+function doDup() {
+    if (stack.length === 0) { error('Stack underflow'); return; }
+    stack.push(stack[stack.length-1]);
+    updateStackDisplay();
+}
+
+function doSwap() {
+    if (stack.length < 2) { error('Need 2 values'); return; }
+    const a = stack.pop(), b = stack.pop();
+    stack.push(a, b);
+    updateStackDisplay();
+}
+
+function doOver() {
+    if (stack.length < 2) { error('Need 2 values'); return; }
+    stack.push(stack[stack.length-2]);
+    updateStackDisplay();
+}
+
+function doRot() {
+    if (stack.length < 3) { error('Need 3 values'); return; }
+    const a = stack.pop(), b = stack.pop(), c = stack.pop();
+    stack.push(b, a, c);
+    updateStackDisplay();
+}
+
+function doNip() {
+    if (stack.length < 2) { error('Need 2 values'); return; }
+    const a = stack.pop();
+    stack.pop();
+    stack.push(a);
+    updateStackDisplay();
+}
+
+function doTuck() {
+    if (stack.length < 2) { error('Need 2 values'); return; }
+    const a = stack.pop(), b = stack.pop();
+    stack.push(a, b, a);
+    updateStackDisplay();
+}
+
+function doAdd() { binOp((a,b) => a + b, '+'); }
+function doSub() { binOp((a,b) => a - b, '-'); }
+function doMul() { binOp((a,b) => a * b, '*'); }
+function doMod() { binOp((a,b) => b % a, 'MOD'); }
+function doAnd() { binOp((a,b) => a & b, 'AND'); }
+function doOr() { binOp((a,b) => a | b, 'OR'); }
+function doXor() { binOp((a,b) => a ^ b, 'XOR'); }
+
+function doDiv() {
+    if (stack.length < 2) { error('Need 2 values'); return; }
+    const a = stack.pop(), b = stack.pop();
+    if (a === 0) { error('Division by zero'); stack.push(b, a); return; }
+    stack.push(Math.trunc(b / a));
+    updateStackDisplay();
+}
+
+function doNot() {
+    if (stack.length < 0) { error('Stack underflow'); return; }
+    stack.push(stack.pop() === 0 ? 1 : 0);
+    updateStackDisplay();
+}
+
+function doNeg() {
+    if (stack.length === 0) { error('Stack underflow'); return; }
+    stack.push(-stack.pop());
+    updateStackDisplay();
+}
+
+function doAbs() {
+    if (stack.length === 0) { error('Stack underflow'); return; }
+    stack.push(Math.abs(stack.pop()));
+    updateStackDisplay();
+}
+
+function doMin() { binOp((a,b) => Math.min(a,b), 'MIN'); }
+function doMax() { binOp((a,b) => Math.max(a,b), 'MAX'); }
+
+function binOp(fn, name) {
+    if (stack.length < 2) { error('Need 2 values for ' + name); return; }
+    const a = stack.pop(), b = stack.pop();
+    stack.push(fn(b, a));
+    updateStackDisplay();
+}
+
+// ============================================================
+// MEMORY OPS
+// ============================================================
+function doPeek(val) {
+    const addr = parseInt(val);
+    if (isNaN(addr) || addr < 0 || addr >= memory.length) {
+        error('Bad address: ' + val); return;
+    }
+    result('mem[' + addr + '] = ' + memory[addr]);
+}
+
+function doPoke(val) {
+    const parts = val.split(/\s+/);
+    if (parts.length < 2) { error('Usage: POKE <addr> <value>'); return; }
+    const addr = parseInt(parts[0]), v = parseInt(parts[1]);
+    if (isNaN(addr) || isNaN(v)) { error('Bad addr/value'); return; }
+    if (addr < 0 || addr >= memory.length) { error('Address out of bounds'); return; }
+    memory[addr] = v;
+    updateMemoryGrid();
+    ok('mem[' + addr + '] = ' + v);
+}
+
+function doDump() {
+    info('=== MEMORY DUMP (non-zero) ===');
+    let found = false;
+    for (let i = 0; i < memory.length; i++) {
+        if (memory[i] !== 0) {
+            result('  [' + i + '] = ' + memory[i]);
+            found = true;
+        }
+    }
+    if (!found) info('  (all zero)');
+}
+
+function showMemory() {
+    info('=== MEMORY STATE ===');
+    let count = 0;
+    for (let i = 0; i < memory.length; i++) {
+        if (memory[i] !== 0) count++;
+    }
+    info('Non-zero cells: ' + count + '/' + memory.length);
+    for (let i = 0; i < Math.min(memory.length, 128); i++) {
+        if (memory[i] !== 0) {
+            const isInstr = isInstructionAddr(i);
+            const tag = isInstr ? ' [INSTR]' : '';
+            result('  [' + i + '] = ' + memory[i] + tag);
+        }
+    }
+}
+
+function showStack() {
+    if (stack.length === 0) { info('Stack: empty'); return; }
+    info('=== STACK (top ->) ===');
+    for (let i = stack.length - 1; i >= 0; i--) {
+        result('  ' + i + ': ' + stack[i] + (i === stack.length-1 ? ' <- top' : ''));
+    }
+}
+
+function showAsm() {
+    if (programLines.length === 0) { info('No program loaded. Type Autocode lines first.'); return; }
+    info('=== COMPILED SUBLEQ ===');
+    for (let i = 0; i < programLines.length; i++) {
+        const parts = programLines[i].trim().split(/\s+/);
+        if (parts.length >= 3) {
+            const sign = parts[0][0];
+            const addr = parseInt(parts[0].substring(1));
+            const a = addr, b = addr + 1, c = parseInt(parts[2]);
+            result('  [' + (i*3) + ',' + (i*3+1) + ',' + (i*3+2) + ']'
+                + ' SUBLEQ mem[' + a + '], mem[' + b + '] -> ' + c
+                + (sign === '-' ? '  (sub)' : '  (add)'));
+        }
+    }
+}
+
+function showSelfMod() {
+    if (!lastSelfMod) { info('No execution yet. Type EXEC first.'); return; }
+    info('=== SELF-MODIFICATION REPORT ===');
+    if (lastSelfMod.writes.length === 0) {
+        info('No memory writes during execution.');
+        return;
+    }
+    info('Total writes: ' + lastSelfMod.writes.length);
+    info('Instruction field writes: ' + lastSelfMod.writes.filter(w => w.writes_instruction_field).length);
+    info('Modified instruction addresses: ' + JSON.stringify(lastSelfMod.modified_instruction_addresses));
+    info('Deterministic: ' + lastSelfMod.deterministic);
+    info('Sandbox safe: ' + lastSelfMod.sandbox_safe);
+    info('');
+    for (const w of lastSelfMod.writes) {
+        if (w.writes_instruction_field) {
+            selfmodLine('  STEP ' + w.step + ': mem[' + w.address + '] '
+                + w.old_value + ' -> ' + w.new_value + ' ** INSTRUCTION FIELD **');
+        }
+    }
+}
+
+// ============================================================
+// AUTOCODE INSTRUCTION HANDLING
+// ============================================================
+function doAddInstruction(raw) {
+    const parts = raw.trim().split(/\s+/);
+    if (parts.length < 3) { error('Format: +<addr> <value> <next>'); return; }
+    const sign = parts[0][0];
+    const addr = parseInt(parts[0].substring(1));
+    const value = parseInt(parts[1]);
+    const next = parseInt(parts[2]);
+
+    if (isNaN(addr) || isNaN(value) || isNaN(next)) {
+        error('Invalid numbers in: ' + raw); return;
+    }
+
+    programLines.push(raw.trim());
+    const lineNum = programLines.length;
+    ok('line ' + lineNum + ': ' + sign + addr + ' ' + value + ' ' + next
+        + '  -> SUBLEQ mem[' + addr + '], mem[' + addr+1 + '] -> ' + next);
+
+    document.getElementById('instrCount').textContent = programLines.length;
+
+    // If WASM available, show parsed representation
+    if (wasm) {
+        try {
+            const parsed = wasm.parse_single_line(raw.trim());
+            if (parsed !== 'null') {
+                const obj = JSON.parse(parsed);
+                info('  compiled: a=' + obj.instr.a + ' b=' + obj.instr.b + ' c=' + obj.instr.c);
+            }
+        } catch(e) {}
+    }
+}
+
+// ============================================================
+// EXECUTE
+// ============================================================
+function doExec() {
+    if (programLines.length === 0) { error('No program loaded. Type Autocode lines first.'); return; }
+    const source = programLines.join('\n');
+
+    if (wasm) {
+        try {
+            const state = wasm.compile_and_run(source);
+            applyState(state);
+            ok('Execution complete. ' + lastTrace.length + ' steps.');
+            if (lastSelfMod && lastSelfMod.writes.length > 0) {
+                const instrWrites = lastSelfMod.writes.filter(w => w.writes_instruction_field);
+                if (instrWrites.length > 0) {
+                    selfmodLine('*** SELF-MODIFICATION DETECTED: '
+                        + instrWrites.length + ' instruction field writes ***');
+                    for (const w of instrWrites) {
+                        selfmodLine('  mem[' + w.address + '] ' + w.old_value
+                            + ' -> ' + w.new_value + ' (step ' + w.step + ')');
+                    }
                 }
+            }
+        } catch(e) {
+            error('WASM error: ' + e);
+            demoExec();
+        }
+    } else {
+        demoExec();
+    }
+}
+
+function demoExec() {
+    // Demo mode: simulate SUBLEQ execution in JS
+    memory.fill(0);
+    lastTrace = [];
+    lastSelfMod = null;
+
+    // Load program into memory
+    const instrs = [];
+    for (let i = 0; i < programLines.length; i++) {
+        const parts = programLines[i].trim().split(/\s+/);
+        if (parts.length < 3) continue;
+        const addr = parseInt(parts[0].substring(1));
+        const a = addr, b = addr + 1, c = parseInt(parts[2]);
+        instrs.push({a, b, c, lineIdx: i});
+        memory[i*3] = a;
+        memory[i*3+1] = b;
+        memory[i*3+2] = c;
+    }
+
+    // Execute SUBLEQ
+    let pc = 0;
+    const maxSteps = 100000;
+    const selfModWrites = [];
+    const modifiedAddrs = new Set();
+    const executableRanges = instrs.map((_, i) => [i*3, i*3+3]);
+
+    for (let step = 0; step < maxSteps; step++) {
+        if (pc + 2 >= memory.length) break;
+        const a = memory[pc], b = memory[pc+1], c = memory[pc+2];
+        if (a < 0 || a >= memory.length || b < 0 || b >= memory.length) break;
+
+        const memA = memory[a];
+        const memB = memory[b];
+        memory[b] = memory[b] - memory[a];
+        const branchTaken = memory[b] <= 0;
+        const nextPc = branchTaken ? c : pc + 3;
+
+        const writesInstr = executableRanges.some(([s,e]) => b >= s && b < e);
+        if (writesInstr) {
+            modifiedAddrs.add(b);
+            selfModWrites.push({
+                step, address: b, old_value: memB, new_value: memory[b],
+                writes_instruction_field: true
             });
         }
-        
-        // Handle file upload
-        function handleUpload(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const content = e.target.result;
-                const lines = content.split('\n').filter(l => l.trim());
-                const editor = document.getElementById('codeEditor');
-                editor.innerHTML = lines.map((line, i) => 
-                    `<div class="code-line" data-line="${i}">${line}</div>`
-                ).join('');
-                document.getElementById('lineCount').textContent = `${lines.length} lines`;
-            };
-            reader.readAsText(file);
+
+        lastTrace.push({
+            step, pc, a, b, c,
+            mem_a_before: memA, mem_b_before: memB, mem_b_after: memory[b],
+            branch_taken: branchTaken
+        });
+
+        if (nextPc >= memory.length) break;
+        pc = nextPc;
+    }
+
+    lastSelfMod = {
+        writes: selfModWrites,
+        modified_instruction_addresses: [...modifiedAddrs],
+        deterministic: true,
+        sandbox_safe: true
+    };
+
+    currentPc = pc;
+    applyDemoState();
+    ok('Demo execution complete. ' + lastTrace.length + ' steps.');
+    if (selfModWrites.length > 0) {
+        selfmodLine('*** SELF-MODIFICATION: ' + selfModWrites.length + ' instruction writes ***');
+    }
+}
+
+function doStep() {
+    if (programLines.length === 0) { error('No program. Type lines then EXEC.'); return; }
+    if (lastTrace.length === 0) {
+        doExec();
+        return;
+    }
+    // Highlight next step
+    const nextIdx = lastTrace.findIndex(s => s.step > currentPc) || 0;
+    if (nextIdx < lastTrace.length) {
+        highlightTraceStep(nextIdx);
+        currentPc = lastTrace[nextIdx].pc;
+    }
+}
+
+function doReset() {
+    stack = [];
+    memory.fill(0);
+    programLines = [];
+    lastTrace = [];
+    lastSelfMod = null;
+    currentPc = 0;
+    updateStackDisplay();
+    updateMemoryGrid();
+    updateTraceDisplay([]);
+    updateSelfModDisplay(null);
+    document.getElementById('instrCount').textContent = '0';
+    document.getElementById('stepCount').textContent = '0';
+    document.getElementById('selfModCount').textContent = '0 writes';
+    ok('Reset complete.');
+}
+
+// ============================================================
+// APPLY STATE FROM WASM
+// ============================================================
+function applyState(state) {
+    // Memory
+    memory.fill(0);
+    const memJson = state.memory_json();
+    if (memJson && memJson !== '[]') {
+        const nonZero = JSON.parse(memJson);
+        for (const [addr, val] of nonZero) {
+            memory[addr] = val;
         }
-        
-        // Update clock
-        function updateClock() {
-            const now = new Date();
-            document.getElementById('clock').textContent = 
-                now.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+    }
+
+    // Trace
+    lastTrace = [];
+    const traceLen = state.trace_len();
+    for (let i = 0; i < traceLen; i++) {
+        const s = state.get_trace_step(i);
+        lastTrace.push({
+            step: s.step, pc: s.pc, a: s.a, b: s.b, c: s.c,
+            mem_a_before: s.mem_a_before, mem_b_before: s.mem_b_before,
+            mem_b_after: s.mem_b_after, branch_taken: s.branch_taken
+        });
+    }
+
+    // Self-mod
+    const smJson = state.self_mod_json();
+    if (smJson && smJson !== '{}') {
+        lastSelfMod = JSON.parse(smJson);
+    } else {
+        lastSelfMod = null;
+    }
+
+    document.getElementById('stepCount').textContent = lastTrace.length;
+    updateMemoryGrid();
+    updateTraceDisplay(lastTrace);
+    updateSelfModDisplay(lastSelfMod);
+}
+
+function applyDemoState() {
+    document.getElementById('stepCount').textContent = lastTrace.length;
+    updateMemoryGrid();
+    updateTraceDisplay(lastTrace);
+    updateSelfModDisplay(lastSelfMod);
+}
+
+// ============================================================
+// UI UPDATES
+// ============================================================
+function updateStackDisplay() {
+    const el = document.getElementById('stackDisplay');
+    document.getElementById('stackDepth').textContent = 'depth: ' + stack.length;
+    if (stack.length === 0) {
+        el.innerHTML = '<div class="stack-empty">empty</div>';
+        return;
+    }
+    el.innerHTML = '<div class="stack-row">'
+        + stack.map((v, i) =>
+            '<div class="stack-cell' + (i === stack.length-1 ? ' top' : '') + '">'
+            + v + '</div>').join('')
+        + '</div>';
+}
+
+function updateMemoryGrid() {
+    const grid = document.getElementById('memoryGrid');
+    const hexLabels = document.getElementById('hexLabels');
+    grid.innerHTML = '';
+    hexLabels.innerHTML = '';
+
+    for (let i = 0; i < 16; i++) {
+        const lbl = document.createElement('div');
+        lbl.className = 'hex-label';
+        lbl.textContent = i.toString(16).toUpperCase();
+        hexLabels.appendChild(lbl);
+    }
+
+    for (let i = 0; i < 256; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'mem-cell';
+        cell.id = 'mem-' + i;
+        const val = memory[i];
+        if (val !== 0) {
+            cell.classList.add('nonzero');
+            cell.textContent = val;
         }
-        
-        // Simulate execution
-        function simulateExecution() {
-            const steps = document.querySelectorAll('.execution-step');
-            steps.forEach(s => s.classList.remove('current'));
-            if (steps[currentStep]) {
-                steps[currentStep].classList.add('current');
-                currentStep = (currentStep + 1) % steps.length;
+        // Highlight self-modified addresses
+        if (lastSelfMod) {
+            if (lastSelfMod.modified_instruction_addresses &&
+                lastSelfMod.modified_instruction_addresses.includes(i)) {
+                cell.classList.add('selfmod');
             }
-            document.getElementById('stepCounter').textContent = 
-                `Step ${currentStep}/${steps.length}`;
         }
-        
-        // Initialize
-        initMemoryGrid();
-        updateClock();
-        setInterval(updateClock, 1000);
-        setInterval(simulateExecution, 2000);
-        document.getElementById('lineCount').textContent = '6 lines';
-    </script>
+        grid.appendChild(cell);
+    }
+
+    let count = 0;
+    for (let i = 0; i < memory.length; i++) if (memory[i] !== 0) count++;
+    document.getElementById('memInfo').textContent = count + '/' + memory.length + ' used';
+}
+
+function updateTraceDisplay(trace) {
+    const el = document.getElementById('traceDisplay');
+    document.getElementById('traceInfo').textContent = trace.length + ' steps';
+    if (trace.length === 0) {
+        el.innerHTML = '<div class="stack-empty">no trace</div>';
+        return;
+    }
+    // Show last 50 steps
+    const show = trace.slice(-50);
+    el.innerHTML = show.map(s => {
+        const mod = s.mem_b_before !== s.mem_b_after &&
+                    isInstructionAddr(s.b);
+        return '<div class="trace-step' + (s === show[show.length-1] ? ' current' : '') + '">'
+            + '<span class="step-pc">PC:' + s.pc + '</span>'
+            + '<span class="step-op">'
+            + (s.branch_taken ? 'BR' : '  ')
+            + ' mem[' + s.a + ']-=mem[' + s.b + ']'
+            + (mod ? '</span><span class="step-mod"> *MODIFIED*</span>' : '</span>')
+            + '</div>';
+    }).join('');
+    el.scrollTop = el.scrollHeight;
+}
+
+function updateSelfModDisplay(report) {
+    const el = document.getElementById('selfModDisplay');
+    if (!report || !report.writes || report.writes.length === 0) {
+        el.innerHTML = '<div class="stack-empty">no self-modification detected</div>';
+        document.getElementById('selfModCount').textContent = '0 writes';
+        return;
+    }
+    const instrWrites = report.writes.filter(w => w.writes_instruction_field);
+    document.getElementById('selfModCount').textContent =
+        instrWrites.length + ' of ' + report.writes.length + ' writes';
+
+    if (instrWrites.length === 0) {
+        el.innerHTML = '<div class="stack-empty">writes to data fields only</div>';
+        return;
+    }
+
+    el.innerHTML = instrWrites.map(w =>
+        '<div class="selfmod-entry">'
+        + '<span class="addr">mem[' + w.address + ']</span> '
+        + '<span class="vals">' + w.old_value + ' &rarr; ' + w.new_value
+        + ' (step ' + w.step + ')</span>'
+        + '</div>'
+    ).join('');
+}
+
+function highlightTraceStep(idx) {
+    document.querySelectorAll('.trace-step').forEach((el, i) => {
+        el.classList.toggle('current', i === idx);
+    });
+}
+
+function isInstructionAddr(addr) {
+    for (let i = 0; i < programLines.length; i++) {
+        const base = i * 3;
+        if (addr >= base && addr < base + 3) return true;
+    }
+    return false;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+    initMemoryGrid();
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    banner('');
+    banner('  _____ _____     _____                            ');
+    banner(' / ____|  ___|   |_   _|                           ');
+    banner(' \\___ \\| |_ ______ | | ___ _ __ ___ _ __   ___ _ __');
+    banner('  ___) |  _|______|| |/ _ \\ \'__/ _ \\ \'_ \\ / _ \\ \'__|');
+    banner(' |____/|_|        |_|  __/| |  __/ | | |  __/ |   ');
+    banner('                     |_|  |_|  \\___|_| |_|\\___|_|   ');
+    banner('');
+    info('Self-modifying SUBLEQ terminal with Forth-style stack');
+    info('Type HELP for commands, EXAMPLES for programs');
+}
+
+function initMemoryGrid() {
+    updateMemoryGrid();
+}
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+        now.toISOString().replace('T',' ').substring(0,19) + ' UTC';
+}
+
+init();
+termInput.focus();
+</script>
 </body>
 </html>

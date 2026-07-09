@@ -1,2 +1,11 @@
 /target
 *.json
+!src/wasm/pkg/package.json
+
+# Continuity
+SESSION_HANDOFF.md
+.continuity/
+
+# IDE
+.idea/
+.cursorrules

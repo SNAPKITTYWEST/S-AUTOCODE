@@ -1,6 +1,6 @@
 use crate::autocode::symbol_table::SymbolTable;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct SubleqInstr {
     pub a: usize,
     pub b: usize,

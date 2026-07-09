@@ -33,7 +33,7 @@ impl OptimizationPipeline {
         println!("  Executed {} instructions", baseline_machine.trace.len());
 
         println!("  Phase 3: Analyzing branch frequencies...");
-        let analyzer = BranchAnalyzer::new(&baseline_machine.trace);
+        let analyzer = BranchAnalyzer::new(&baseline_machine.legacy_steps());
         let profile = analyzer.analyze();
         println!("  Found {} basic blocks, {} loop headers",
             profile.basic_blocks.len(), profile.loop_headers.len());
