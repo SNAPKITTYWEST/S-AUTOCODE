@@ -206,16 +206,26 @@
                                 </div>
                             </div>
 
-                            <!-- Agent Chat -->
-                            <div class="agent-chat-box" id="agent-chat-box">
-                                <div class="agent-chat-messages" id="agent-chat-messages">
+                            <!-- Agent Chat (expanded, animated) -->
+                            <div class="agent-chat-expanded" id="agent-chat-expanded">
+                                <div class="agent-chat-header">
+                                    <span class="agent-chat-title" id="chat-agent-title">FORGE — Compiler</span>
+                                    <button class="agent-chat-expand-btn" id="chat-expand-btn" title="Toggle fullscreen">&#x26F6;</button>
+                                </div>
+                                <div class="agent-chat-reasoning" id="agent-chat-reasoning">
+                                    <div class="reasoning-ticker" id="reasoning-ticker"></div>
+                                </div>
+                                <div class="agent-chat-messages-expanded" id="agent-chat-messages">
                                     <div class="agent-chat-msg is-system">
-                                        <span class="agent-chat-text">Select an agent above to inspect.</span>
+                                        <span class="agent-chat-avatar">S</span>
+                                        <span class="agent-chat-text">Select an agent to begin. Type a message and the agent will compute its response with a reasoning stream.</span>
                                     </div>
                                 </div>
-                                <div class="agent-chat-input-area">
-                                    <input type="text" class="agent-chat-input" id="agent-chat-input" placeholder="Ask the agent...">
-                                    <button class="btn btn-mini" id="agent-chat-send">Send</button>
+                                <div class="agent-chat-input-expanded">
+                                    <textarea class="agent-chat-textarea" id="agent-chat-input" rows="1" placeholder="Ask the agent anything..."></textarea>
+                                    <button class="agent-chat-send-btn" id="agent-chat-send">
+                                        <span class="send-icon">&#x27A4;</span>
+                                    </button>
                                 </div>
                             </div>
                         </div>

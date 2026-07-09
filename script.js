@@ -20,15 +20,72 @@ const agentProfiles = {
     vault: { name: 'VAULT', role: 'Storage', color: '#bd10e0', trust: 'HIGH', domain: 'storage', action: 'seal_chain ✓', worm: 420, proposals: '61 approved', rule: 'can_execute(vault, seal_chain)?<br>trust_gte(high, medium) ✓<br>domain_ok(storage, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' }
 };
 
+const reasoningSteps = {
+    forge: [
+        { label: 'Parsing', formula: 'S[n+1] = f(S[n], Σ)' },
+        { label: 'AST', formula: 'λx.∀y.(x → y)' },
+        { label: 'Type check', formula: 'Γ ⊢ e : τ' },
+        { label: 'Lower', formula: 'SUBLEQ(a, b, c)' },
+        { label: 'Emit', formula: '⌊e⌋ = [instr]' }
+    ],
+    sentinel: [
+        { label: 'Scan', formula: '∀m∈M.bound(m) ✓' },
+        { label: 'Verify', formula: 'hash(C[n]) = H(C[n-1])' },
+        { label: 'Audit', formula: 'Σ(perm) ∩ Σ(req) ≠ ∅' },
+        { label: 'Seal', formula: 'WORM[n] = SHA256(state)' },
+        { label: 'Done', formula: 'chain ∫ intact' }
+    ],
+    oracle: [
+        { label: 'Read', formula: 'σ = (Q, Σ, δ, q₀, F)' },
+        { label: 'Analyze', formula: 'fix(f) = f(fix(f))' },
+        { label: 'Prove', formula: '∀x. P(x) → Q(x)' },
+        { label: 'Check', formula: '⊢ e₁ = e₂ : τ' },
+        { label: 'Report', formula: '∠(risk) = μ·σ²' }
+    ],
+    codex: [
+        { label: 'Parse', formula: 'L(G) = { w | S ⇒* w }' },
+        { label: 'Index', formula: 'idx(t) = ∪ fᵢ(t)' },
+        { label: 'Draft', formula: 'doc = fold(λa.b, xs)' },
+        { label: 'Prove', formula: 'Γ ⊢ □φ : Type' },
+        { label: 'Seal', formula: 'H(doc) ‖ chain' }
+    ],
+    vault: [
+        { label: 'Read', formula: 'M[addr] → val' },
+        { label: 'Seal', formula: 'W[n] = H(W[n-1] ‖ data)' },
+        { label: 'Verify', formula: '∀i∈[0,n]. valid(W[i])' },
+        { label: 'Store', formula: 'append(chain, receipt)' },
+        { label: 'Emit', formula: 'emit(Sealed { ... })' }
+    ]
+};
+
 function setupAgentChat() {
     const agentBtns = document.querySelectorAll('.agent-heap-btn');
     const chatInput = document.getElementById('agent-chat-input');
     const chatSend = document.getElementById('agent-chat-send');
     const chatMessages = document.getElementById('agent-chat-messages');
+    const reasoningTicker = document.getElementById('reasoning-ticker');
+    const reasoningBar = document.getElementById('agent-chat-reasoning');
+    const chatTitle = document.getElementById('chat-agent-title');
+    const expandBtn = document.getElementById('chat-expand-btn');
+    const chatExpanded = document.getElementById('agent-chat-expanded');
     
     if (!chatInput || !chatSend || !chatMessages) return;
     
     let selectedAgent = 'forge';
+    let isThinking = false;
+    
+    // Auto-resize textarea
+    chatInput.addEventListener('input', () => {
+        chatInput.style.height = 'auto';
+        chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+    });
+    
+    // Expand toggle
+    if (expandBtn) {
+        expandBtn.addEventListener('click', () => {
+            chatExpanded.classList.toggle('is-fullscreen');
+        });
+    }
     
     // Agent selection
     agentBtns.forEach(btn => {
@@ -37,7 +94,6 @@ function setupAgentChat() {
             btn.classList.add('is-selected');
             selectedAgent = btn.dataset.agent;
             
-            // Update inspector
             const profile = agentProfiles[selectedAgent];
             if (profile) {
                 document.getElementById('inspector-name').textContent = profile.name;
@@ -49,42 +105,102 @@ function setupAgentChat() {
                 document.getElementById('inspector-proposals').textContent = profile.proposals;
                 document.getElementById('inspector-rule').innerHTML = profile.rule;
                 
-                // Clear and show greeting in chat
+                if (chatTitle) chatTitle.textContent = `${profile.name} — ${profile.role}`;
+                
                 chatMessages.innerHTML = '';
-                appendChatMsg(chatMessages, 'system', `${profile.name} is online. Trust: ${profile.trust}`);
-                appendChatMsg(chatMessages, 'agent', profile.name, `I am ${profile.name}, the ${profile.role.toLowerCase()} agent. ${profile.trust} trust. ${profile.worm} WORM entries sealed.`);
+                appendChatMsg(chatMessages, 'system', '', `${profile.name} online. Trust: ${profile.trust}. ${profile.worm} entries sealed.`);
+                appendChatMsg(chatMessages, 'agent', profile.name, `Ready. ${profile.role} agent at your service. What do you need?`);
             }
         });
     });
     
+    // Run reasoning ticker animation
+    function runReasoningTicker(agent, onComplete) {
+        const steps = reasoningSteps[agent] || reasoningSteps.forge;
+        reasoningTicker.innerHTML = '';
+        reasoningBar.classList.add('is-active');
+        
+        steps.forEach((step, i) => {
+            const el = document.createElement('span');
+            el.className = 'ticker-step';
+            el.innerHTML = `<span class="ticker-icon is-pending">○</span><span class="ticker-label">${step.label}</span><span class="ticker-formula">${step.formula}</span>`;
+            reasoningTicker.appendChild(el);
+        });
+        
+        let i = 0;
+        function nextStep() {
+            if (i >= steps.length) {
+                setTimeout(() => {
+                    reasoningBar.classList.remove('is-active');
+                    if (onComplete) onComplete();
+                }, 200);
+                return;
+            }
+            const els = reasoningTicker.querySelectorAll('.ticker-step');
+            // Mark previous as done
+            if (i > 0) {
+                const prev = els[i-1].querySelector('.ticker-icon');
+                prev.className = 'ticker-icon is-check';
+                prev.textContent = '✓';
+            }
+            // Mark current as computing
+            const curr = els[i].querySelector('.ticker-icon');
+            curr.className = 'ticker-icon is-computing';
+            curr.textContent = '◎';
+            els[i].classList.add('is-active');
+            
+            i++;
+            setTimeout(nextStep, 250 + Math.random() * 200);
+        }
+        nextStep();
+    }
+    
+    // Show typing dots
+    function showTyping(container) {
+        const div = document.createElement('div');
+        div.className = 'agent-chat-msg is-agent is-typing';
+        div.innerHTML = `<span class="agent-chat-avatar" style="background:${agentProfiles[selectedAgent]?.color || '#5e6ad2'}">?</span><span class="agent-chat-text"><span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span></span>`;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+        return div;
+    }
+    
     // Send message
     function sendChat() {
         const msg = chatInput.value.trim();
-        if (!msg) return;
+        if (!msg || isThinking) return;
         
         appendChatMsg(chatMessages, 'user', 'You', msg);
         chatInput.value = '';
+        chatInput.style.height = 'auto';
+        isThinking = true;
         
-        // Agent response
-        setTimeout(() => {
+        const typingEl = showTyping(chatMessages);
+        
+        runReasoningTicker(selectedAgent, () => {
+            typingEl.remove();
             const response = getAgentResponse(selectedAgent, msg);
             const profile = agentProfiles[selectedAgent];
             appendChatMsg(chatMessages, 'agent', profile.name, response);
-        }, 300);
+            isThinking = false;
+        });
     }
     
     chatSend.addEventListener('click', sendChat);
     chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') sendChat();
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
     });
 }
 
 function appendChatMsg(container, type, sender, text) {
     const div = document.createElement('div');
     div.className = `agent-chat-msg is-${type}`;
-    div.innerHTML = `<span class="agent-chat-sender">${sender}</span><span class="agent-chat-text">${text}</span>`;
+    const profile = agentProfiles[sender?.toLowerCase()];
+    const avatarLetter = sender ? sender[0] : (type === 'user' ? 'Y' : type === 'system' ? 'S' : '?');
+    const avatarBg = profile?.color || (type === 'user' ? 'var(--status-success)' : type === 'system' ? 'var(--text-tertiary)' : 'var(--accent-primary)');
+    div.innerHTML = `<span class="agent-chat-avatar" style="background:${avatarBg}">${avatarLetter}</span><span class="agent-chat-text">${text}</span>`;
     container.appendChild(div);
-    container.scrollTop = container.scrollHeight;
+    requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
 }
 
 function getAgentResponse(agent, msg) {
