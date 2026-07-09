@@ -192,6 +192,85 @@
             font-size: 0.6rem; line-height: 1.4; color: var(--white);
             overflow-y: auto; max-height: 140px; white-space: pre-wrap;
         }
+
+        /* FORGE PIPELINE PANELS */
+        .pipeline-bar {
+            display: flex; gap: 2px; padding: 0.3rem 0.8rem;
+            background: var(--bg-light); border-bottom: 1px solid var(--border);
+            flex-shrink: 0; overflow-x: auto;
+        }
+        .pipe-stage {
+            padding: 0.15rem 0.5rem; font-size: 0.55rem; color: var(--dim);
+            border: 1px solid var(--border); white-space: nowrap;
+            transition: all 0.3s; cursor: default;
+        }
+        .pipe-stage.active { color: var(--green); border-color: var(--green); background: var(--green-dim); }
+        .pipe-stage.done { color: var(--cyan); border-color: var(--cyan); }
+        .pipe-stage.error { color: var(--red); border-color: var(--red); }
+
+        .reasoning-panel { max-height: 160px; }
+        .reasoning-token {
+            padding: 0.15rem 0.3rem; font-size: 0.65rem; border-bottom: 1px solid #1a1a1a;
+            display: flex; gap: 0.4rem; align-items: flex-start;
+        }
+        .reasoning-token .tok-num { color: var(--dim); min-width: 1.5em; }
+        .reasoning-token .tok-text { color: var(--white); }
+        .reasoning-token.current { background: rgba(0,255,65,0.06); }
+
+        .confidence-bar {
+            height: 4px; background: var(--bg); margin: 0.2rem 0;
+            border: 1px solid var(--border); flex-shrink: 0;
+        }
+        .confidence-fill {
+            height: 100%; background: var(--green); transition: width 0.3s;
+        }
+
+        .decision-panel { max-height: 100px; }
+        .decision-node {
+            padding: 0.15rem 0.3rem; font-size: 0.65rem;
+            border-bottom: 1px solid #1a1a1a; display: flex;
+            justify-content: space-between; align-items: center;
+        }
+        .decision-node.selected { color: var(--green); }
+        .decision-node .conf { color: var(--amber); font-size: 0.6rem; }
+
+        .proof-panel { max-height: 130px; }
+        .proof-obligation {
+            padding: 0.15rem 0.3rem; font-size: 0.65rem;
+            border-bottom: 1px solid #1a1a1a; display: flex;
+            justify-content: space-between;
+        }
+        .proof-obligation .proved { color: var(--green); }
+        .proof-obligation .open { color: var(--amber); }
+        .proof-obligation .failed { color: var(--red); }
+
+        .workspace-panel { max-height: 100px; }
+        .workspace-file {
+            padding: 0.1rem 0.3rem; font-size: 0.65rem;
+            border-bottom: 1px solid #1a1a1a; display: flex;
+            justify-content: space-between;
+        }
+        .workspace-file .status { font-size: 0.55rem; }
+        .workspace-file .status.compiled { color: var(--green); }
+        .workspace-file .status.generated { color: var(--cyan); }
+        .workspace-file .status.pending { color: var(--dim); }
+
+        .replay-panel { max-height: 60px; }
+        .replay-slider {
+            width: 100%; accent-color: var(--green);
+        }
+        .replay-info {
+            font-size: 0.6rem; color: var(--dim);
+            display: flex; justify-content: space-between;
+        }
+
+        .receipt-panel { max-height: 80px; }
+        .receipt-hash {
+            font-size: 0.55rem; color: var(--green); word-break: break-all;
+            padding: 0.2rem; background: var(--bg);
+            border: 1px solid var(--border);
+        }
+        .receipt-meta { font-size: 0.55rem; color: var(--dim); margin-top: 0.2rem; }
         .selfmod-entry {
             padding: 0.15rem 0.3rem;
             border-bottom: 1px solid #222;
@@ -258,6 +337,19 @@
 
         <!-- RIGHT PANELS -->
         <div class="panels-col">
+            <!-- PIPELINE PROGRESS -->
+            <div class="pipeline-bar" id="pipelineBar">
+                <span class="pipe-stage" data-stage="intent">INTENT</span>
+                <span class="pipe-stage" data-stage="reasoning">REASON</span>
+                <span class="pipe-stage" data-stage="symbolize">S-EXPR</span>
+                <span class="pipe-stage" data-stage="arithmetic">ARITH</span>
+                <span class="pipe-stage" data-stage="autocode">CODE</span>
+                <span class="pipe-stage" data-stage="subleq">SUBLEQ</span>
+                <span class="pipe-stage" data-stage="execute">EXEC</span>
+                <span class="pipe-stage" data-stage="verify">PROOF</span>
+                <span class="pipe-stage" data-stage="receipt">SEAL</span>
+            </div>
+
             <!-- STACK -->
             <div class="panel stack-panel">
                 <div class="panel-header">
@@ -312,6 +404,76 @@
                 </div>
             </div>
 
+            <!-- REASONING STREAM -->
+            <div class="panel reasoning-panel">
+                <div class="panel-header">
+                    <span style="color:var(--amber)">REASONING STREAM</span>
+                    <span id="confidenceLabel">0%</span>
+                </div>
+                <div class="confidence-bar"><div class="confidence-fill" id="confidenceFill" style="width:0"></div></div>
+                <div class="panel-body" id="reasoningDisplay">
+                    <div class="stack-empty">awaiting intent...</div>
+                </div>
+            </div>
+
+            <!-- DECISION GRAPH -->
+            <div class="panel decision-panel">
+                <div class="panel-header">
+                    <span>DECISION GRAPH</span>
+                </div>
+                <div class="panel-body" id="decisionDisplay">
+                    <div class="stack-empty">no decisions yet</div>
+                </div>
+            </div>
+
+            <!-- PROOF PANEL -->
+            <div class="panel proof-panel">
+                <div class="panel-header">
+                    <span style="color:var(--cyan)">LEAN VERIFICATION</span>
+                    <span id="proofStatus">pending</span>
+                </div>
+                <div class="panel-body" id="proofDisplay">
+                    <div class="stack-empty">proofs pending...</div>
+                </div>
+            </div>
+
+            <!-- AGENT WORKSPACE -->
+            <div class="panel workspace-panel">
+                <div class="panel-header">
+                    <span>AGENT WORKSPACE</span>
+                    <span id="fileCount">0 files</span>
+                </div>
+                <div class="panel-body" id="workspaceDisplay">
+                    <div class="stack-empty">no files</div>
+                </div>
+            </div>
+
+            <!-- EXECUTION REPLAY -->
+            <div class="panel replay-panel">
+                <div class="panel-header">
+                    <span>EXECUTION REPLAY</span>
+                    <span id="replayLabel">step 0/0</span>
+                </div>
+                <div class="panel-body">
+                    <input type="range" class="replay-slider" id="replaySlider" min="0" max="0" value="0">
+                    <div class="replay-info">
+                        <span id="replayStage">idle</span>
+                        <span id="replayTime">0ms</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECEIPT -->
+            <div class="panel receipt-panel">
+                <div class="panel-header">
+                    <span style="color:var(--green)">RECEIPT</span>
+                </div>
+                <div class="panel-body" id="receiptDisplay">
+                    <div class="receipt-hash" id="receiptHash">awaiting seal...</div>
+                    <div class="receipt-meta" id="receiptMeta"></div>
+                </div>
+            </div>
+
             <!-- TRACE -->
             <div class="panel trace-panel">
                 <div class="panel-header">
@@ -334,7 +496,9 @@
 // WASM BRIDGE - loads autocode-wasm
 // ============================================================
 import { createCompiler } from './sexpr.js';
+import { createPipeline } from './pipeline.js';
 const sexpr = createCompiler();
+const pipeline = createPipeline(sexpr, null);
 let wasm = null;
 let wasmLoading = true;
 let wasmError = null;
@@ -934,39 +1098,131 @@ function doStep() {
 // ============================================================
 function doSexpr(raw) {
     banner('> ' + raw);
+    runPipeline(raw);
+}
+
+async function runPipeline(input) {
+    // Clear previous state
+    document.getElementById('reasoningDisplay').innerHTML = '';
+    document.getElementById('decisionDisplay').innerHTML = '';
+    document.getElementById('proofDisplay').innerHTML = '';
+    document.getElementById('workspaceDisplay').innerHTML = '';
+    document.getElementById('receiptHash').textContent = 'sealing...';
+    document.getElementById('receiptMeta').textContent = '';
+    document.getElementById('confidenceFill').style.width = '0%';
+    document.getElementById('confidenceLabel').textContent = '0%';
+    document.getElementById('proofStatus').textContent = 'pending';
+
+    // Reset pipeline bar
+    document.querySelectorAll('.pipe-stage').forEach(s => {
+        s.classList.remove('active', 'done', 'error');
+    });
+
     try {
-        const compiled = sexpr.compile(raw);
-        lastGenerated = compiled;
-        updateGeneratedPanel(compiled);
+        const result = await pipeline.runPipeline(input, {
+            onStageChange: (stage, data, state) => {
+                // Update pipeline bar
+                document.querySelectorAll('.pipe-stage').forEach(s => {
+                    if (s.dataset.stage === stage) {
+                        s.classList.add('active');
+                    } else if (pipeline.getStages().indexOf(s.dataset.stage) < pipeline.getStages().indexOf(stage)) {
+                        s.classList.remove('active');
+                        s.classList.add('done');
+                    }
+                });
 
-        // Also load into Autocode engine if in autocode mode
-        if (compiled.autocode && compiled.autocode.trim()) {
-            programLines = compiled.autocode.trim().split('\n').filter(l => l.trim());
-            document.getElementById('instrCount').textContent = programLines.length;
-            info('Compiled to ' + programLines.length + ' SUBLEQ instructions');
-            info('Type EXEC to run, or COMPILE-TO <target> for other languages');
+                // Stage-specific UI updates
+                if (stage === 'symbolize' && data.input) {
+                    lastGenerated = sexpr.compile(data.input);
+                    updateGeneratedPanel(lastGenerated);
+                    if (lastGenerated.autocode) {
+                        programLines = lastGenerated.autocode.trim().split('\n').filter(l => l.trim());
+                        document.getElementById('instrCount').textContent = programLines.length;
+                    }
+                }
+
+                if (stage === 'execute' && data.finalMemory) {
+                    // Update memory grid with execution results
+                    for (let i = 0; i < Math.min(256, data.finalMemory.length); i++) {
+                        memory[i] = data.finalMemory[i] || 0;
+                    }
+                    updateMemoryGrid();
+                }
+
+                if (stage === 'receipt' && data.receipt) {
+                    document.getElementById('receiptHash').textContent = data.receipt;
+                    document.getElementById('receiptMeta').textContent =
+                        `${data.payload.instructionCount} instr | ${data.payload.executionSteps} steps | ${data.payload.proofStatus}`;
+                }
+            },
+            onReasoningToken: (token, confidence) => {
+                const display = document.getElementById('reasoningDisplay');
+                const div = document.createElement('div');
+                div.className = 'reasoning-token current';
+                div.innerHTML = `<span class="tok-num">${pipeline.getState().reasoning.length}</span><span class="tok-text">${token.text}</span>`;
+                display.appendChild(div);
+                display.scrollTop = display.scrollHeight;
+
+                // Remove current from previous
+                const prev = display.querySelectorAll('.current');
+                if (prev.length > 1) prev[0].classList.remove('current');
+
+                // Update confidence
+                document.getElementById('confidenceFill').style.width = (confidence * 100) + '%';
+                document.getElementById('confidenceLabel').textContent = Math.round(confidence * 100) + '%';
+            },
+        });
+
+        // Update decision graph
+        const decisions = pipeline.getState().decisionGraph;
+        if (decisions.length > 0) {
+            const dd = document.getElementById('decisionDisplay');
+            dd.innerHTML = decisions.map(d =>
+                `<div class="decision-node ${d.selected ? 'selected' : ''}">`
+                + `<span>${d.selected ? '> ' : '  '}${d.label}</span>`
+                + `<span class="conf">${(d.confidence * 100).toFixed(0)}%</span></div>`
+            ).join('');
         }
 
-        // Show symbols
-        const symCount = Object.keys(compiled.symbols).length;
-        const fnCount = Object.keys(compiled.functions).length;
-        if (symCount > 0) {
-            result('Symbols: ' + Object.entries(compiled.symbols)
-                .map(([k, v]) => k + '=mem[' + v + ']').join(', '));
-        }
-        if (fnCount > 0) {
-            result('Functions: ' + Object.keys(compiled.functions).join(', '));
+        // Update proof panel
+        if (result.proof) {
+            const pd = document.getElementById('proofDisplay');
+            pd.innerHTML = result.proof.obligations.map(o =>
+                `<div class="proof-obligation">`
+                + `<span>${o.name}</span>`
+                + `<span class="${o.status}">${o.status}</span></div>`
+            ).join('');
+            document.getElementById('proofStatus').textContent =
+                result.proof.proved + '/' + result.proof.total + ' proved';
         }
 
-        // Show autocode output
-        if (compiled.autocode) {
-            info('Autocode output:');
-            compiled.autocode.split('\n').forEach(line => {
-                if (line.trim()) result('  ' + line);
-            });
+        // Update workspace
+        if (pipeline.getState().workspace) {
+            const wd = document.getElementById('workspaceDisplay');
+            const files = Object.entries(pipeline.getState().workspace);
+            document.getElementById('fileCount').textContent = files.length + ' files';
+            wd.innerHTML = files.map(([name, info]) =>
+                `<div class="workspace-file">`
+                + `<span>${name}</span>`
+                + `<span class="status ${info.status}">${info.status}</span></div>`
+            ).join('');
         }
+
+        // Update replay slider
+        const replayLen = pipeline.getReplayLength();
+        const slider = document.getElementById('replaySlider');
+        slider.max = replayLen - 1;
+        slider.value = replayLen - 1;
+        document.getElementById('replayLabel').textContent = `step ${replayLen}/${replayLen}`;
+        document.getElementById('replayStage').textContent = 'complete';
+
+        // Final info
+        info('Pipeline complete: ' + result.execution.steps + ' steps, ' +
+            result.proof.proved + '/' + result.proof.total + ' proofs');
+        result('Receipt: ' + result.receipt.receipt.substring(0, 40) + '...');
+
     } catch (e) {
-        error('Parse error: ' + e.message);
+        error('Pipeline error: ' + e.message);
     }
 }
 
@@ -1231,6 +1487,17 @@ function init() {
     updateClock();
     setInterval(updateClock, 1000);
 
+    // Replay slider
+    document.getElementById('replaySlider').addEventListener('input', (e) => {
+        const idx = parseInt(e.target.value);
+        const snap = pipeline.getReplaySnapshot(idx);
+        if (snap) {
+            document.getElementById('replayLabel').textContent = `step ${idx + 1}/${pipeline.getReplayLength()}`;
+            document.getElementById('replayStage').textContent = snap.stage;
+            document.getElementById('replayTime').textContent = snap.timestamp ? new Date(snap.timestamp).toLocaleTimeString() : '';
+        }
+    });
+
     banner('');
     banner('  _____ _____     _____                            ');
     banner(' / ____|  ___|   |_   _|                           ');
@@ -1239,8 +1506,9 @@ function init() {
     banner(' |____/|_|        |_|  __/| |  __/ | | |  __/ |   ');
     banner('                     |_|  |_|  \\___|_| |_|\\___|_|   ');
     banner('');
-    info('Self-modifying SUBLEQ terminal with Forth-style stack');
-    info('Type HELP for commands, EXAMPLES for programs');
+    info('S-AUTOCODE Symbolic Forge v0.3');
+    info('Pipeline: Intent -> Reason -> S-Expr -> SUBLEQ -> Exec -> Verify -> Seal');
+    info('Type HELP for commands, or just describe what you want');
 }
 
 function initMemoryGrid() {
