@@ -245,6 +245,13 @@ function setupAgentChat() {
                     typingEl.remove();
                     const profile = agentProfiles[selectedAgent];
                     appendChatMsg(chatMessages, 'agent', profile.name, response);
+                    
+                    // If there's a pending animation (code typing), run it now
+                    if (fireworksAI.pendingAnimation) {
+                        const animation = fireworksAI.pendingAnimation;
+                        fireworksAI.pendingAnimation = null;
+                        await animation();
+                    }
                 } catch (error) {
                     typingEl.remove();
                     appendChatMsg(chatMessages, 'agent', 'CODEX', `Error: ${error.message}. Using fallback response.`);

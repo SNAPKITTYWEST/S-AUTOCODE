@@ -123,10 +123,11 @@ What would you like help with?`;
                 // Open editor WITHOUT code (empty)
                 const result = await this.tools.openEditor(file, '');
                 
-                // Type it out in real-time with animation
-                await this.typeCodeInEditor(code);
+                // Schedule typing animation to run AFTER response is shown
+                // Store it so script.js can trigger it
+                this.pendingAnimation = () => this.typeCodeInEditor(code);
                 
-                return `✅ ${result.message}\n\n**Code generated with typing animation!**\n\n\`\`\`\n${code}\n\`\`\``;
+                return `✅ ${result.message}\n\n**Typing code into editor now...**\n\n\`\`\`\n${code}\n\`\`\``;
             }
             
             const result = await this.tools.openEditor(file);
