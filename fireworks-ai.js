@@ -3,9 +3,12 @@ export class FireworksAI {
     constructor() {
         this.apiKey = 'key_eEDSHgkIYo5hjal14';
         this.modelPath = 'accounts/ahmedparr93-mr3fh2cp/deployments/o5hjal14';
-        this.apiUrl = 'https://api.fireworks.ai/inference/v1/chat/completions';
+        // Try localhost proxy first (run codex-server.py), fallback to direct API
+        this.apiUrl = 'http://localhost:8765';
+        this.fallbackUrl = 'https://api.fireworks.ai/inference/v1/chat/completions';
         this.conversationHistory = [];
         this.isThinking = false;
+        this.useProxy = true;
     }
 
     async chat(userMessage, systemPrompt = null) {
@@ -30,12 +33,17 @@ export class FireworksAI {
                 content: userMessage
             });
 
-            const response = await fetch(this.apiUrl, {
-                method: 'POST',
-                headers: {
+            const url = this.useProxy ? this.apiUrl : this.fallbackUrl;
+            const headers = this.useProxy
+                ? { 'Content-Type': 'application/json' }
+                : {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.apiKey}`
-                },
+                };
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: headers,
                 body: JSON.stringify({
                     model: this.modelPath,
                     max_tokens: 4096,
@@ -45,6 +53,12 @@ export class FireworksAI {
             });
 
             if (!response.ok) {
+                // If proxy fails, try direct API
+                if (this.useProxy) {
+                    console.warn('Proxy failed, trying direct API...');
+                    this.useProxy = false;
+                    return this.chat(userMessage, systemPrompt);
+                }
                 throw new Error(`API error: ${response.status} ${response.statusText}`);
             }
 
