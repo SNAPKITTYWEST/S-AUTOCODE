@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use serde::{Serialize, Deserialize};
-use autocode_emulator::subleq::machine::SubleqStep;
+use autocode_emulator::subleq::machine::TraceEvent;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BranchProfile {
@@ -45,12 +45,12 @@ struct RecordedStep {
 }
 
 impl BranchAnalyzer {
-    pub fn new(trace: &[SubleqStep]) -> Self {
+    pub fn new(trace: &[TraceEvent]) -> Self {
         let recorded: Vec<_> = trace.iter().map(|s| RecordedStep {
             pc: s.pc,
-            a: s.instr.a,
-            b: s.instr.b,
-            c: s.instr.c,
+            a: s.a,
+            b: s.b,
+            c: s.c,
             branch_taken: s.branch_taken,
         }).collect();
         Self { trace: recorded }

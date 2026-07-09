@@ -827,7 +827,7 @@ function demoExec() {
 
         lastTrace.push({
             step, pc, a, b, c,
-            mem_a_before: memA, mem_b_before: memB, mem_b_after: memory[b],
+            before_a: memA, before_b: memB, after_b: memory[b],
             branch_taken: branchTaken
         });
 
@@ -902,8 +902,8 @@ function applyState(state) {
         const s = state.get_trace_step(i);
         lastTrace.push({
             step: s.step, pc: s.pc, a: s.a, b: s.b, c: s.c,
-            mem_a_before: s.mem_a_before, mem_b_before: s.mem_b_before,
-            mem_b_after: s.mem_b_after, branch_taken: s.branch_taken
+            before_a: s.before_a, before_b: s.before_b,
+            after_b: s.after_b, branch_taken: s.branch_taken
         });
     }
 
@@ -992,7 +992,7 @@ function updateTraceDisplay(trace) {
     // Show last 50 steps
     const show = trace.slice(-50);
     el.innerHTML = show.map(s => {
-        const mod = s.mem_b_before !== s.mem_b_after &&
+        const mod = s.before_b !== s.after_b &&
                     isInstructionAddr(s.b);
         return '<div class="trace-step' + (s === show[show.length-1] ? ' current' : '') + '">'
             + '<span class="step-pc">PC:' + s.pc + '</span>'

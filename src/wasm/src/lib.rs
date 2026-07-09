@@ -1,6 +1,6 @@
 use wasm_bindgen::prelude::*;
 use autocode_compiler::SubleqBackend;
-use autocode_emulator::{SubleqMachine, analyze_self_modification, SelfModificationReport};
+use autocode_emulator::{SubleqMachine, SelfModificationReport};
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, serde::Serialize)]
@@ -10,9 +10,9 @@ pub struct StepResult {
     pub a: usize,
     pub b: usize,
     pub c: usize,
-    pub mem_a_before: i64,
-    pub mem_b_before: i64,
-    pub mem_b_after: i64,
+    pub before_a: i64,
+    pub before_b: i64,
+    pub after_b: i64,
     pub branch_taken: bool,
 }
 
@@ -64,7 +64,7 @@ impl MachineState {
         } else {
             StepResult {
                 step: 0, pc: 0, a: 0, b: 0, c: 0,
-                mem_a_before: 0, mem_b_before: 0, mem_b_after: 0,
+                before_a: 0, before_b: 0, after_b: 0,
                 branch_taken: false,
             }
         }
@@ -130,14 +130,14 @@ pub fn compile_and_run(source: &str) -> MachineState {
             a: event.a,
             b: event.b,
             c: event.c,
-            mem_a_before: event.mem_a_before,
-            mem_b_before: event.mem_b_before,
-            mem_b_after: event.mem_b_after,
+            before_a: event.before_a,
+            before_b: event.before_b,
+            after_b: event.after_b,
             branch_taken: event.branch_taken,
         });
     }
 
-    let report = analyze_self_modification(&machine);
+    let report = machine.get_self_modification_report();
     state.self_mod = Some(report);
 
     state
@@ -177,14 +177,14 @@ pub fn run_step_by_step(source: &str, max_steps: usize) -> MachineState {
             a: event.a,
             b: event.b,
             c: event.c,
-            mem_a_before: event.mem_a_before,
-            mem_b_before: event.mem_b_before,
-            mem_b_after: event.mem_b_after,
+            before_a: event.before_a,
+            before_b: event.before_b,
+            after_b: event.after_b,
             branch_taken: event.branch_taken,
         });
     }
 
-    let report = analyze_self_modification(&machine);
+    let report = machine.get_self_modification_report();
     state.self_mod = Some(report);
 
     state
@@ -225,6 +225,6 @@ pub fn self_mod_analysis(source: &str) -> String {
     machine.load_program(&instrs);
     let _ = machine.run();
 
-    let report = analyze_self_modification(&machine);
+    let report = machine.get_self_modification_report();
     serde_json::to_string(&report).unwrap_or_default()
 }
