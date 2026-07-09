@@ -459,13 +459,27 @@
 
     </div>
 
-    <script>
+    <script type="module">
+    import init, { compile_source, compile_and_run, run_step_by_step, MachineState } from './autocode_wasm.js';
+
+    // Initialize WASM
+    let wasmReady = false;
+    init().then(() => {
+        wasmReady = true;
+        console.log('WASM initialized');
+        appendTerminalLine('output', 'S-AUTOCODE WASM runtime ready.');
+    }).catch(err => {
+        console.error('WASM init failed:', err);
+        appendTerminalLine('error', 'WASM init failed: ' + err);
+    });
+
     // === Terminal Engine ===
     const terminalInput = document.getElementById('terminal-input');
     const terminalOutput = document.getElementById('terminal-output');
     const reasoningStream = document.getElementById('reasoning-stream');
     let commandHistory = [];
     let historyIndex = -1;
+    let currentState = null;
 
     // Built-in commands
     const commands = {
@@ -477,6 +491,8 @@
   chain            - Show WORM chain
   agents           - List all agents
   proofs           - Show proof status
+  memory           - Show memory dump
+  trace            - Show execution trace
   clear            - Clear terminal
   history          - Show command history`,
 
@@ -504,7 +520,25 @@
   [✓] Memory Bounds    - No out-of-bounds access
   [✓] WORM Seal        - Chain integrity verified
   [~] Soundness        - In progress
-  [ ] Completeness     - Pending`
+  [ ] Completeness     - Pending`,
+
+        'memory': () => {
+            if (!currentState) return 'No program executed yet.';
+            return currentState.memory_json();
+        },
+
+        'trace': () => {
+            if (!currentState) return 'No program executed yet.';
+            const trace = currentState.trace;
+            if (trace.length === 0) return 'Empty trace.';
+            let out = `EXECUTION TRACE (${trace.length} steps)\n`;
+            for (let i = 0; i < Math.min(trace.length, 20); i++) {
+                const s = trace[i];
+                out += `[${String(s.step).padStart(4, '0')}] PC:${s.pc} A:${s.a} B:${s.b} C:${s.c} ${s.branch_taken ? 'BRANCH' : ''}\n`;
+            }
+            if (trace.length > 20) out += `... (${trace.length - 20} more steps)`;
+            return out;
+        }
     };
 
     // S-expression processor
@@ -613,13 +647,44 @@
         // Check S-expression
         const sExprResult = processSExpr(cmd);
         if (sExprResult) {
-            // Animate through stages
             animateForgePipeline(sExprResult);
             return;
         }
 
+        // Try WASM compile
+        if (wasmReady) {
+            try {
+                addReasoningEntry('Parsing', `Compiling: ${cmd}`);
+                const state = compile_and_run(cmd);
+                currentState = state;
+                addReasoningEntry('Execution', `Completed in ${state.step_count} steps`);
+
+                if (state.memory_json() !== '[]') {
+                    appendTerminalLine('result', `Memory: ${state.memory_json()}`);
+                }
+                appendTerminalLine('result', `PC: ${state.pc}, Steps: ${state.step_count}, Halted: ${state.halted}`);
+                updateTapeViewer(state);
+                return;
+            } catch(e) {
+                // Fall through to unknown
+            }
+        }
+
         // Unknown command
         appendTerminalLine('error', `Unknown command: ${cmd}. Type "help" for available commands.`);
+    }
+
+    // Update tape viewer with machine state
+    function updateTapeViewer(state) {
+        const cells = document.querySelectorAll('.tape-cell');
+        cells.forEach(cell => {
+            const addr = parseInt(cell.dataset.addr);
+            if (!isNaN(addr)) {
+                const val = state.get_memory_cell(addr);
+                cell.textContent = (val & 0xFF).toString(16).padStart(2, '0').toUpperCase();
+                cell.classList.toggle('is-active', val !== 0);
+            }
+        });
     }
 
     // Animate forge pipeline
