@@ -3,846 +3,307 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>S-AUTOCODE | Symbolic Operating Environment</title>
+    <title>S-AUTOCODE | Sovereign Runtime Interface</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app-observatory">
+    <div class="app-observatory" id="app">
 
-        <!-- Command Bar (Top) -->
+        <!-- Command Bar -->
         <header class="command-bar">
             <div class="command-left">
                 <div class="logo">
                     <span class="logo-symbol">&#x29B9;</span>
                     <span class="logo-text">S-AUTOCODE</span>
                 </div>
-                <nav class="menu-bar">
-                    <button class="menu-item">File</button>
-                    <button class="menu-item">Edit</button>
-                    <button class="menu-item">View</button>
-                    <button class="menu-item">Reason</button>
-                    <button class="menu-item">Verify</button>
-                    <button class="menu-item">Execute</button>
-                    <button class="menu-item">Observe</button>
+                <nav class="menu-bar" id="main-nav">
+                    <button class="menu-item" data-route="/observatory">Observatory</button>
+                    <button class="menu-item" data-route="/editor">Editor</button>
+                    <button class="menu-item" data-route="/sandbox">Sandbox</button>
+                    <button class="menu-item" data-route="/agents">Agents</button>
+                    <button class="menu-item" data-route="/proofs">Proofs</button>
+                    <button class="menu-item" data-route="/worm">WORM</button>
+                    <button class="menu-item" data-route="/deploy">Deploy</button>
                 </nav>
             </div>
             <div class="command-center">
-                <div class="command-palette">
-                    <input type="text" class="command-input" placeholder="Command or search (Ctrl+K)">
+                <div class="command-palette" id="cmd-palette-trigger">
+                    <input type="text" class="command-input" id="global-search" placeholder="Command or search (Ctrl+K)">
                     <span class="command-shortcut">Ctrl+K</span>
                 </div>
             </div>
             <div class="command-right">
+                <div class="runtime-indicator">
+                    <span class="runtime-dot" id="runtime-status"></span>
+                    <span class="runtime-label" id="runtime-label">PRIMUS Ready</span>
+                </div>
                 <div class="agent-status">
                     <span class="agent-dot">&#x25CF;</span>
-                    <span class="agent-label">Agent ready</span>
+                    <span class="agent-label" id="agent-count">5 agents</span>
                 </div>
-                <button class="btn btn-icon" title="Settings">
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M8 10a2 2 0 100-4 2 2 0 000 4z"/>
-                        <path d="M13.5 8c0-.28-.05-.55-.13-.8l1.48-1.16-1.5-2.6-1.77.71a5.02 5.02 0 00-1.38-.8V2.5h-3v1.65a5.02 5.02 0 00-1.38.8L4.35 3.64l-1.5 2.6L4.33 7.2c-.08.25-.13.52-.13.8s.05.55.13.8l-1.48 1.16 1.5 2.6 1.77-.71c.42.32.88.57 1.38.71V13.5h3v-1.65a5.02 5.02 0 001.38-.71l1.77.71 1.5-2.6-1.48-1.16c.08-.25.13-.52.13-.8z"/>
-                    </svg>
-                </button>
+                <div class="worm-indicator" id="worm-indicator">
+                    <span class="worm-seal">&#x29B9;</span>
+                    <span class="worm-block" id="worm-block">Block 0</span>
+                </div>
             </div>
         </header>
 
-        <!-- Main Observatory -->
-        <div class="observatory">
+        <!-- Route View Container -->
+        <div class="route-container" id="route-container">
 
-            <!-- Left: Project Explorer -->
-            <aside class="panel panel-left">
-                <div class="panel-header">
-                    <h3 class="panel-title">Project</h3>
-                    <div class="panel-actions">
-                        <button class="btn btn-icon btn-mini">+</button>
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <div class="symbol-explorer">
-                        <div class="symbol-group">
-                            <div class="symbol-group-header">
-                                <span class="symbol-group-icon">&#x29B9;</span>
-                                <span class="symbol-group-label">AST</span>
+            <!-- /observatory — Five-Pane Observatory -->
+            <div class="route-view" id="view-observatory" data-route="/observatory">
+                <div class="observatory">
+                    <!-- Left: Project Explorer -->
+                    <aside class="panel panel-left">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Project</h3>
+                            <div class="panel-actions">
+                                <button class="btn btn-icon btn-mini">+</button>
                             </div>
-                            <div class="symbol-list">
-                                <div class="symbol-item is-active">
-                                    <span class="symbol-icon">f</span>
-                                    <span class="symbol-name">factorial</span>
-                                    <span class="symbol-type">Function</span>
-                                </div>
-                                <div class="symbol-item">
-                                    <span class="symbol-icon">&#x03C4;</span>
-                                    <span class="symbol-name">Tape</span>
-                                    <span class="symbol-type">Memory</span>
-                                </div>
-                                <div class="symbol-item">
-                                    <span class="symbol-icon">&#x2211;</span>
-                                    <span class="symbol-name">sum</span>
-                                    <span class="symbol-type">Function</span>
-                                </div>
-                                <div class="symbol-item">
-                                    <span class="symbol-icon">&#x0394;</span>
-                                    <span class="symbol-name">delta</span>
-                                    <span class="symbol-type">Variable</span>
+                        </div>
+                        <div class="panel-content">
+                            <div class="symbol-explorer" id="symbol-explorer">
+                                <div class="symbol-group">
+                                    <div class="symbol-group-header">
+                                        <span class="symbol-group-icon">&#x29B9;</span>
+                                        <span class="symbol-group-label">AST</span>
+                                    </div>
+                                    <div class="symbol-list" id="symbol-list"></div>
                                 </div>
                             </div>
                         </div>
-                        <div class="symbol-group">
-                            <div class="symbol-group-header">
-                                <span class="symbol-group-icon">&#x25B3;</span>
-                                <span class="symbol-group-label">Definitions</span>
-                            </div>
-                            <div class="symbol-list">
-                                <div class="symbol-item">
-                                    <span class="symbol-icon">&#x03BB;</span>
-                                    <span class="symbol-name">main</span>
-                                    <span class="symbol-type">Entry</span>
-                                </div>
-                                <div class="symbol-item">
-                                    <span class="symbol-icon">&#x2200;</span>
-                                    <span class="symbol-name">loop</span>
-                                    <span class="symbol-type">Control</span>
+                    </aside>
+
+                    <!-- Center: Terminal + Forge -->
+                    <main class="panel panel-center">
+                        <div class="agent-forge">
+                            <div class="forge-header">
+                                <h3 class="forge-title">Live Agent Pipeline</h3>
+                                <div class="forge-status">
+                                    <span class="status-badge" id="forge-badge">Ready</span>
                                 </div>
                             </div>
+                            <div class="forge-stages" id="forge-stages">
+                                <div class="stage" data-stage="parse"><span class="stage-icon">&#x29B9;</span><span class="stage-label">Parse</span></div>
+                                <div class="stage" data-stage="ast"><span class="stage-icon">&#x2207;</span><span class="stage-label">AST</span></div>
+                                <div class="stage" data-stage="lower"><span class="stage-icon">&#x2193;</span><span class="stage-label">Lower</span></div>
+                                <div class="stage" data-stage="verify"><span class="stage-icon">&#x2713;</span><span class="stage-label">Verify</span></div>
+                                <div class="stage" data-stage="optimize"><span class="stage-icon">&#x26A1;</span><span class="stage-label">Optimize</span></div>
+                                <div class="stage" data-stage="emit"><span class="stage-icon">&#x2295;</span><span class="stage-label">Emit</span></div>
+                                <div class="stage" data-stage="execute"><span class="stage-icon">&#x25B6;</span><span class="stage-label">Execute</span></div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </aside>
 
-            <!-- Center: Symbolic Terminal -->
-            <main class="panel panel-center">
-                <!-- Live Agent State -->
-                <div class="agent-forge">
-                    <div class="forge-header">
-                        <h3 class="forge-title">Live Agent Pipeline</h3>
-                        <div class="forge-status">
-                            <span class="status-badge is-executing">Executing</span>
+                        <div class="symbolic-terminal">
+                            <div class="terminal-header">
+                                <h3 class="terminal-title">Symbolic Terminal</h3>
+                                <div class="terminal-actions">
+                                    <button class="btn btn-icon btn-mini" title="Clear" id="btn-clear">&#x2317;</button>
+                                    <button class="btn btn-icon btn-mini" title="Export" id="btn-export">&#x2B07;</button>
+                                </div>
+                            </div>
+                            <div class="terminal-content" id="terminal-output"></div>
+                            <div class="terminal-input-area">
+                                <span class="terminal-prompt">&#x279C;</span>
+                                <input type="text" class="terminal-input-field" id="terminal-input" placeholder="Enter command or S-expression...">
+                            </div>
                         </div>
-                    </div>
-                    <div class="forge-stages">
-                        <div class="stage is-complete">
-                            <span class="stage-icon">&#x29B9;</span>
-                            <span class="stage-label">Parsing</span>
-                            <span class="stage-progress">100%</span>
-                        </div>
-                        <div class="stage is-complete">
-                            <span class="stage-icon">&#x2207;</span>
-                            <span class="stage-label">Building AST</span>
-                            <span class="stage-progress">100%</span>
-                        </div>
-                        <div class="stage is-complete">
-                            <span class="stage-icon">&#x2193;</span>
-                            <span class="stage-label">Lowering</span>
-                            <span class="stage-progress">100%</span>
-                        </div>
-                        <div class="stage is-complete">
-                            <span class="stage-icon">&#x2713;</span>
-                            <span class="stage-label">Verification</span>
-                            <span class="stage-progress">100%</span>
-                        </div>
-                        <div class="stage is-complete">
-                            <span class="stage-icon">&#x26A1;</span>
-                            <span class="stage-label">Optimization</span>
-                            <span class="stage-progress">100%</span>
-                        </div>
-                        <div class="stage is-active">
-                            <span class="stage-icon">&#x2295;</span>
-                            <span class="stage-label">SUBLEQ Emit</span>
-                            <span class="stage-progress">73%</span>
-                        </div>
-                        <div class="stage">
-                            <span class="stage-icon">&#x25B6;</span>
-                            <span class="stage-label">Execution</span>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Terminal Output -->
-                <div class="symbolic-terminal">
-                    <div class="terminal-header">
-                        <h3 class="terminal-title">Symbolic Terminal</h3>
-                        <div class="terminal-actions">
-                            <button class="btn btn-icon btn-mini" title="Clear">&#x2317;</button>
-                            <button class="btn btn-icon btn-mini" title="Pause">&#x23F8;</button>
-                            <button class="btn btn-icon btn-mini" title="Step">&#x23ED;</button>
+                        <div class="execution-timeline">
+                            <div class="timeline-header">
+                                <h3 class="timeline-title">Execution Timeline</h3>
+                                <div class="timeline-controls">
+                                    <button class="btn btn-mini" id="btn-rewind">&#x25C0;</button>
+                                    <button class="btn btn-mini" id="btn-play">&#x25B6;</button>
+                                    <button class="btn btn-mini" id="btn-forward">&#x25B6;&#x25B6;</button>
+                                    <button class="btn btn-mini" id="btn-replay">&#x21BB;</button>
+                                </div>
+                            </div>
+                            <div class="timeline-scrubber">
+                                <div class="timeline-markers" id="timeline-markers"></div>
+                                <div class="timeline-progress-bar">
+                                    <div class="progress-fill" id="timeline-progress" style="width: 0%"></div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="terminal-content" id="terminal-output">
-                        <div class="terminal-line is-input">
-                            <span class="terminal-prompt">&#x279C;</span>
-                            <span class="terminal-input">factorial 5</span>
+                    </main>
+
+                    <!-- Right: Agent Reasoning -->
+                    <aside class="panel panel-right">
+                        <div class="panel-header">
+                            <h3 class="panel-title">Agent Reasoning</h3>
                         </div>
-                        <div class="terminal-line is-output">
-                            <pre><code><span class="s-expr">(factorial 5)</span>
-<span class="s-expr"> &#x2193; AST</span>
-<span class="s-expr"> &#x2193; IR</span>
-<span class="s-expr"> &#x2193; SUBLEQ</span>
-<span class="s-expr"> &#x2192; 120</span></code></pre>
+                        <div class="panel-content">
+                            <div class="reasoning-stream" id="reasoning-stream"></div>
                         </div>
-                        <div class="terminal-line is-reasoning">
-                            <span class="reasoning-label">Reasoning:</span>
-                            <span class="reasoning-text">Applied memoization pattern. Reduced recursive depth from O(n) to O(1) via lookup table.</span>
-                        </div>
-                        <div class="terminal-line is-code">
-                            <pre><code><span class="kw">def</span> <span class="fn">factorial</span>(n):
-    <span class="kw">if</span> n == <span class="num">0</span>:
-        <span class="kw">return</span> <span class="num">1</span>
-    <span class="kw">else</span>:
-        <span class="kw">return</span> n * factorial(n - <span class="num">1</span>)</code></pre>
-                        </div>
-                    </div>
-                    <div class="terminal-input-area">
-                        <span class="terminal-prompt">&#x279C;</span>
-                        <input type="text" class="terminal-input-field" id="terminal-input" placeholder="Enter S-expression or command...">
-                    </div>
+                    </aside>
                 </div>
 
-                <!-- Execution Timeline -->
-                <div class="execution-timeline">
-                    <div class="timeline-header">
-                        <h3 class="timeline-title">Execution History</h3>
-                        <div class="timeline-controls">
-                            <button class="btn btn-mini" id="btn-rewind">&#x25C0; Rewind</button>
-                            <button class="btn btn-mini" id="btn-play">&#x25B6; Play</button>
-                            <button class="btn btn-mini" id="btn-forward">Fast Forward &#x25B6;&#x25B6;</button>
-                        </div>
-                    </div>
-                    <div class="timeline-scrubber">
-                        <div class="timeline-markers">
-                            <div class="marker is-complete" data-step="0">
-                                <span class="marker-dot">&#x25CF;</span>
-                                <span class="marker-label">Parse</span>
-                            </div>
-                            <div class="marker is-complete" data-step="1">
-                                <span class="marker-dot">&#x25CF;</span>
-                                <span class="marker-label">Reason</span>
-                            </div>
-                            <div class="marker is-complete" data-step="2">
-                                <span class="marker-dot">&#x25CF;</span>
-                                <span class="marker-label">Build</span>
-                            </div>
-                            <div class="marker is-complete" data-step="3">
-                                <span class="marker-dot">&#x25CF;</span>
-                                <span class="marker-label">Verify</span>
-                            </div>
-                            <div class="marker is-complete" data-step="4">
-                                <span class="marker-dot">&#x25CF;</span>
-                                <span class="marker-label">Compile</span>
-                            </div>
-                            <div class="marker is-active" data-step="5">
-                                <span class="marker-dot">&#x25CF;</span>
-                                <span class="marker-label">Execute</span>
-                            </div>
-                            <div class="marker" data-step="6">
-                                <span class="marker-dot">&#x25CB;</span>
-                                <span class="marker-label">Receipt</span>
-                            </div>
-                        </div>
-                        <div class="timeline-progress-bar">
-                            <div class="progress-fill" id="timeline-progress" style="width: 83.3%"></div>
-                        </div>
-                    </div>
-                </div>
-            </main>
-
-            <!-- Right: Agent Reasoning -->
-            <aside class="panel panel-right">
-                <div class="panel-header">
-                    <h3 class="panel-title">Agent Reasoning</h3>
-                    <div class="panel-actions">
-                        <button class="btn btn-icon btn-mini">&#x2699;</button>
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <div class="reasoning-stream" id="reasoning-stream">
-                        <div class="reasoning-entry">
-                            <span class="reasoning-timestamp">00:01.234</span>
-                            <span class="reasoning-stage is-parsing">Parsing</span>
-                            <p class="reasoning-text">Received S-expression: <code class="inline-code">(factorial 5)</code></p>
-                        </div>
-                        <div class="reasoning-entry">
-                            <span class="reasoning-timestamp">00:01.456</span>
-                            <span class="reasoning-stage is-building">Building AST</span>
-                            <p class="reasoning-text">Constructed syntax tree with 3 nodes: <code class="inline-code">factorial</code>, <code class="inline-code">5</code>, application</p>
-                        </div>
-                        <div class="reasoning-entry">
-                            <span class="reasoning-timestamp">00:02.102</span>
-                            <span class="reasoning-stage is-lowering">Lowering</span>
-                            <p class="reasoning-text">Lowered to IR: <code class="inline-code">call @factorial(i32 5)</code></p>
-                        </div>
-                        <div class="reasoning-entry">
-                            <span class="reasoning-timestamp">00:03.234</span>
-                            <span class="reasoning-stage is-verifying">Verification</span>
-                            <p class="reasoning-text">Type check passed. Invariant: <code class="inline-code">n &ge; 0</code> holds.</p>
-                        </div>
-                        <div class="reasoning-entry">
-                            <span class="reasoning-timestamp">00:04.567</span>
-                            <span class="reasoning-stage is-optimizing">Optimization</span>
-                            <p class="reasoning-text">Applied memoization. Reduced from O(n) to O(1) via lookup table.</p>
-                        </div>
-                        <div class="reasoning-entry">
-                            <span class="reasoning-timestamp">00:05.123</span>
-                            <span class="reasoning-stage is-compiling">SUBLEQ Emit</span>
-                            <p class="reasoning-text">Generated 47 SUBLEQ instructions. Memory footprint: 188 bytes.</p>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-
-        </div>
-
-                <!-- Bottom: Memory Tape + Proofs + Widgets -->
+                <!-- Bottom: Memory + Proofs + Widgets -->
                 <footer class="bottom-panel">
                     <div class="panel-split">
-                        <!-- Memory Tape -->
                         <div class="panel panel-memory">
                             <div class="panel-header">
                                 <h3 class="panel-title">Memory Tape</h3>
                                 <div class="panel-actions">
-                                    <button class="btn btn-mini" id="btn-tape-prev">&#x25C0;</button>
-                                    <button class="btn btn-mini" id="btn-tape-next">&#x25B6;</button>
+                                    <button class="btn btn-mini" id="btn-mem-prev">&#x25C0;</button>
+                                    <button class="btn btn-mini" id="btn-mem-next">&#x25B6;</button>
                                 </div>
                             </div>
                             <div class="panel-content">
-                                <div class="tape-viewer" id="tape-viewer">
-                                    <div class="tape-header">
-                                        <span class="tape-addr-label">ADDR</span>
-                                        <span class="tape-cell-label">0</span>
-                                        <span class="tape-cell-label">1</span>
-                                        <span class="tape-cell-label">2</span>
-                                        <span class="tape-cell-label">3</span>
-                                        <span class="tape-cell-label">4</span>
-                                        <span class="tape-cell-label">5</span>
-                                        <span class="tape-cell-label">6</span>
-                                        <span class="tape-cell-label">7</span>
-                                    </div>
-                                    <div class="tape-row">
-                                        <span class="tape-address">0x00</span>
-                                        <span class="tape-cell" data-addr="0">00</span>
-                                        <span class="tape-cell" data-addr="1">00</span>
-                                        <span class="tape-cell" data-addr="2">00</span>
-                                        <span class="tape-cell" data-addr="3">00</span>
-                                        <span class="tape-cell is-active" data-addr="4">78</span>
-                                        <span class="tape-cell" data-addr="5">00</span>
-                                        <span class="tape-cell" data-addr="6">00</span>
-                                        <span class="tape-cell" data-addr="7">00</span>
-                                    </div>
-                                    <div class="tape-row">
-                                        <span class="tape-address">0x08</span>
-                                        <span class="tape-cell" data-addr="8">00</span>
-                                        <span class="tape-cell" data-addr="9">00</span>
-                                        <span class="tape-cell" data-addr="10">00</span>
-                                        <span class="tape-cell" data-addr="11">00</span>
-                                        <span class="tape-cell" data-addr="12">00</span>
-                                        <span class="tape-cell" data-addr="13">00</span>
-                                        <span class="tape-cell" data-addr="14">00</span>
-                                        <span class="tape-cell" data-addr="15">00</span>
-                                    </div>
-                                    <div class="tape-row">
-                                        <span class="tape-address">0x10</span>
-                                        <span class="tape-cell" data-addr="16">05</span>
-                                        <span class="tape-cell" data-addr="17">00</span>
-                                        <span class="tape-cell" data-addr="18">00</span>
-                                        <span class="tape-cell" data-addr="19">00</span>
-                                        <span class="tape-cell" data-addr="20">01</span>
-                                        <span class="tape-cell" data-addr="21">00</span>
-                                        <span class="tape-cell" data-addr="22">00</span>
-                                        <span class="tape-cell" data-addr="23">00</span>
-                                    </div>
-                                </div>
+                                <div class="tape-viewer" id="tape-viewer"></div>
                             </div>
                         </div>
-
-                        <!-- Proofs -->
                         <div class="panel panel-proofs">
                             <div class="panel-header">
                                 <h3 class="panel-title">Proofs</h3>
                             </div>
                             <div class="panel-content">
-                                <div class="proof-list">
-                                    <div class="proof-item is-verified">
-                                        <span class="proof-icon">&#x2713;</span>
-                                        <span class="proof-name">Type Safety</span>
-                                        <span class="proof-status">Verified</span>
-                                    </div>
-                                    <div class="proof-item is-verified">
-                                        <span class="proof-icon">&#x2713;</span>
-                                        <span class="proof-name">Termination</span>
-                                        <span class="proof-status">Verified</span>
-                                    </div>
-                                    <div class="proof-item is-verifying">
-                                        <span class="proof-icon">&#x23F3;</span>
-                                        <span class="proof-name">Memory Bounds</span>
-                                        <span class="proof-status">Verifying...</span>
-                                    </div>
-                                    <div class="proof-item is-pending">
-                                        <span class="proof-icon">&#x25CB;</span>
-                                        <span class="proof-name">WORM Seal</span>
-                                        <span class="proof-status">Pending</span>
-                                    </div>
-                                    <div class="proof-item is-pending">
-                                        <span class="proof-icon">&#x25CB;</span>
-                                        <span class="proof-name">Soundness</span>
-                                        <span class="proof-status">Pending</span>
-                                    </div>
-                                </div>
+                                <div class="proof-list" id="proof-list"></div>
                             </div>
                         </div>
-
-                        <!-- Observatory Widgets -->
                         <div class="panel panel-widgets">
                             <div class="panel-header">
                                 <h3 class="panel-title">Widgets</h3>
-                                <div class="panel-actions">
-                                    <button class="btn btn-mini" id="btn-add-widget">+</button>
-                                </div>
                             </div>
                             <div class="panel-content">
-                                <div class="widget-grid">
-                                    <div class="widget" data-widget="registers">
-                                        <div class="widget-header">
-                                            <span class="widget-title">Registers</span>
-                                        </div>
-                                        <div class="widget-body">
-                                            <div class="register-row">
-                                                <span class="register-name">PC</span>
-                                                <span class="register-value">0x0012</span>
-                                            </div>
-                                            <div class="register-row">
-                                                <span class="register-name">A</span>
-                                                <span class="register-value">0x0078</span>
-                                            </div>
-                                            <div class="register-row">
-                                                <span class="register-name">B</span>
-                                                <span class="register-value">0x0005</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="widget" data-widget="heap">
-                                        <div class="widget-header">
-                                            <span class="widget-title">Heap</span>
-                                        </div>
-                                        <div class="widget-body">
-                                            <div class="heap-bar">
-                                                <div class="heap-used" style="width: 42%">42%</div>
-                                            </div>
-                                            <div class="heap-stats">
-                                                <span>Used: 1.2 MB</span>
-                                                <span>Free: 1.6 MB</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="widget" data-widget="performance">
-                                        <div class="widget-header">
-                                            <span class="widget-title">Performance</span>
-                                        </div>
-                                        <div class="widget-body">
-                                            <div class="perf-stat">
-                                                <span class="perf-label">FPS</span>
-                                                <span class="perf-value">120</span>
-                                            </div>
-                                            <div class="perf-stat">
-                                                <span class="perf-label">Latency</span>
-                                                <span class="perf-value">16ms</span>
-                                            </div>
-                                            <div class="perf-stat">
-                                                <span class="perf-label">Reflow</span>
-                                                <span class="perf-value">8ms</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <div class="widget-grid" id="widget-grid"></div>
                             </div>
                         </div>
                     </div>
                 </footer>
+            </div>
+
+            <!-- /editor — Feature Editor -->
+            <div class="route-view hidden" id="view-editor" data-route="/editor">
+                <div class="editor-layout">
+                    <div class="editor-sidebar">
+                        <div class="panel-header"><h3 class="panel-title">Files</h3></div>
+                        <div class="panel-content" id="editor-files"></div>
+                    </div>
+                    <div class="editor-main">
+                        <div class="editor-tabs" id="editor-tabs"></div>
+                        <div class="editor-content" id="editor-content">
+                            <div class="editor-placeholder">Open a file to begin editing</div>
+                        </div>
+                        <div class="editor-statusbar">
+                            <span id="editor-pos">Ln 1, Col 1</span>
+                            <span id="editor-lang">S-AUTOCODE</span>
+                            <span id="editor-encoding">UTF-8</span>
+                        </div>
+                    </div>
+                    <div class="editor-inspector">
+                        <div class="panel-header"><h3 class="panel-title">Inspector</h3></div>
+                        <div class="panel-content" id="editor-inspector-content"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- /sandbox — 64-bit Computer Simulation -->
+            <div class="route-view hidden" id="view-sandbox" data-route="/sandbox">
+                <div class="sandbox-layout">
+                    <div class="sandbox-header">
+                        <h3 class="sandbox-title">Sandboxed 64-bit Runtime</h3>
+                        <div class="sandbox-controls">
+                            <button class="btn btn-mini" id="sandbox-run">&#x25B6; Run</button>
+                            <button class="btn btn-mini" id="sandbox-step">&#x23ED; Step</button>
+                            <button class="btn btn-mini" id="sandbox-pause">&#x23F8; Pause</button>
+                            <button class="btn btn-mini" id="sandbox-reset">&#x21BB; Reset</button>
+                            <button class="btn btn-mini" id="sandbox-export">&#x2B07; Export</button>
+                        </div>
+                    </div>
+                    <div class="sandbox-panels">
+                        <div class="sandbox-registers">
+                            <div class="panel-header"><h3 class="panel-title">Registers</h3></div>
+                            <div class="panel-content" id="sandbox-registers"></div>
+                        </div>
+                        <div class="sandbox-memory">
+                            <div class="panel-header"><h3 class="panel-title">Memory Tape</h3></div>
+                            <div class="panel-content" id="sandbox-memory"></div>
+                        </div>
+                        <div class="sandbox-trace">
+                            <div class="panel-header"><h3 class="panel-title">Execution Trace</h3></div>
+                            <div class="panel-content" id="sandbox-trace"></div>
+                        </div>
+                        <div class="sandbox-selfmod">
+                            <div class="panel-header"><h3 class="panel-title">Self-Modifying Code</h3></div>
+                            <div class="panel-content" id="sandbox-selfmod"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- /agents — Agent Status Board -->
+            <div class="route-view hidden" id="view-agents" data-route="/agents">
+                <div class="agents-layout">
+                    <div class="agents-grid" id="agents-grid"></div>
+                    <div class="agent-detail" id="agent-detail">
+                        <div class="agent-detail-placeholder">Select an agent to inspect</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- /proofs — Proof Registry -->
+            <div class="route-view hidden" id="view-proofs" data-route="/proofs">
+                <div class="proofs-layout">
+                    <div class="proofs-list" id="proofs-list"></div>
+                    <div class="proof-detail" id="proof-detail"></div>
+                </div>
+            </div>
+
+            <!-- /symbols/:id — Symbol Inspector -->
+            <div class="route-view hidden" id="view-symbols" data-route="/symbols">
+                <div class="symbols-layout">
+                    <div class="symbol-inspector" id="symbol-inspector"></div>
+                </div>
+            </div>
+
+            <!-- /worm — WORM Chain Explorer -->
+            <div class="route-view hidden" id="view-worm" data-route="/worm">
+                <div class="worm-layout">
+                    <div class="worm-chain" id="worm-chain"></div>
+                    <div class="worm-detail" id="worm-detail"></div>
+                </div>
+            </div>
+
+            <!-- /deploy — Deployment Dashboard -->
+            <div class="route-view hidden" id="view-deploy" data-route="/deploy">
+                <div class="deploy-layout">
+                    <div class="deploy-dashboard" id="deploy-dashboard"></div>
+                </div>
+            </div>
+
+            <!-- 404 — Broken Seal Recovery -->
+            <div class="route-view hidden" id="view-404" data-route="/404">
+                <div class="error-404">
+                    <div class="error-seal">&#x29B9;</div>
+                    <h2>Seal Broken</h2>
+                    <p>Route not found. Chain integrity compromised.</p>
+                    <button class="btn" onclick="window.location.hash='#/'">Recover to Observatory</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Floating Command Palette -->
+        <div class="overlay" id="overlay"></div>
+        <div class="command-palette-modal" id="command-palette">
+            <input type="text" class="command-palette-input" id="palette-input" placeholder="Type a command...">
+            <div class="command-palette-results" id="palette-results"></div>
+        </div>
 
     </div>
 
-    <script type="module">
-    import init, { compile_source, compile_and_run, run_step_by_step, MachineState } from './autocode_wasm.js';
-
-    // Initialize WASM
-    let wasmReady = false;
-    init().then(() => {
-        wasmReady = true;
-        console.log('WASM initialized');
-        appendTerminalLine('output', 'S-AUTOCODE WASM runtime ready.');
-    }).catch(err => {
-        console.error('WASM init failed:', err);
-        appendTerminalLine('error', 'WASM init failed: ' + err);
-    });
-
-    // === Terminal Engine ===
-    const terminalInput = document.getElementById('terminal-input');
-    const terminalOutput = document.getElementById('terminal-output');
-    const reasoningStream = document.getElementById('reasoning-stream');
-    let commandHistory = [];
-    let historyIndex = -1;
-    let currentState = null;
-
-    // Built-in commands
-    const commands = {
-        'help': () => `Available commands:
-  factorial <n>    - Compute factorial
-  sum <a> <b>      - Compute sum
-  subleq <expr>    - Compile to SUBLEQ
-  inspect <symbol> - Inspect a symbol
-  chain            - Show WORM chain
-  agents           - List all agents
-  proofs           - Show proof status
-  memory           - Show memory dump
-  trace            - Show execution trace
-  clear            - Clear terminal
-  history          - Show command history`,
-
-        'clear': () => { terminalOutput.innerHTML = ''; return ''; },
-
-        'chain': () => `WORM CHAIN
-  [0000] GENESIS  sha256:a7f3b1c9...
-  [0001] PARSE    sha256:e5f6a7b8...
-  [0002] BUILD    sha256:c9d0e1f2...
-  [0003] LOWER    sha256:3b4c5d6e...
-  [0004] VERIFY   sha256:7f8a9b0c...
-  [0005] COMPILE  sha256:d1e2f3a4...
-  Total: 6 entries, append-only, Ed25519 sealed`,
-
-        'agents': () => `AGENT REGISTRY
-  FORGE    [compiling]   trust: HIGH   domain: code-generation
-  SENTINEL [idle]        trust: HIGH   domain: security
-  ORACLE   [reasoning]   trust: HIGH   domain: analysis
-  CODEX    [verifying]   trust: MEDIUM domain: documentation
-  VAULT    [sealing]     trust: HIGH   domain: storage`,
-
-        'proofs': () => `PROOF OBLIGATIONS
-  [✓] Type Safety      - All expressions type-check
-  [✓] Termination      - All loops guaranteed to terminate
-  [✓] Memory Bounds    - No out-of-bounds access
-  [✓] WORM Seal        - Chain integrity verified
-  [~] Soundness        - In progress
-  [ ] Completeness     - Pending`,
-
-        'memory': () => {
-            if (!currentState) return 'No program executed yet.';
-            return currentState.memory_json();
-        },
-
-        'trace': () => {
-            if (!currentState) return 'No program executed yet.';
-            const trace = currentState.trace;
-            if (trace.length === 0) return 'Empty trace.';
-            let out = `EXECUTION TRACE (${trace.length} steps)\n`;
-            for (let i = 0; i < Math.min(trace.length, 20); i++) {
-                const s = trace[i];
-                out += `[${String(s.step).padStart(4, '0')}] PC:${s.pc} A:${s.a} B:${s.b} C:${s.c} ${s.branch_taken ? 'BRANCH' : ''}\n`;
-            }
-            if (trace.length > 20) out += `... (${trace.length - 20} more steps)`;
-            return out;
-        }
-    };
-
-    // S-expression processor
-    function processSExpr(expr) {
-        const match = expr.match(/\((\w+)\s*(.*)\)/);
-        if (!match) return null;
-        const [_, op, args] = match;
-
-        switch(op) {
-            case 'factorial': {
-                const n = parseInt(args) || 0;
-                const result = factorial(n);
-                return {
-                    input: `(${op} ${n})`,
-                    steps: [
-                        `Parsed: function call factorial(${n})`,
-                        `AST: (App (Var factorial) (Lit ${n}))`,
-                        `IR: call @factorial(i32 ${n})`,
-                        `SUBLEQ: [0] SUB [${n}] [1] ; if A<=0 goto 1`,
-                        `Result: ${result}`
-                    ],
-                    result: result,
-                    subleq: generateSUBLEQ(n)
-                };
-            }
-            case 'sum': {
-                const nums = args.split(/\s+/).map(Number);
-                const result = nums.reduce((a, b) => a + b, 0);
-                return {
-                    input: `(${op} ${nums.join(' ')})`,
-                    steps: [
-                        `Parsed: function call sum(${nums.join(', ')})`,
-                        `AST: (App (Var sum) ${nums.map(n => `(Lit ${n})`).join(' ')})`,
-                        `IR: call @sum(${nums.map(n => `i32 ${n}`).join(', ')})`,
-                        `Result: ${result}`
-                    ],
-                    result: result
-                };
-            }
-            default:
-                return null;
-        }
-    }
-
-    function factorial(n) {
-        if (n <= 1) return 1;
-        return n * factorial(n - 1);
-    }
-
-    function generateSUBLEQ(n) {
-        let tape = [];
-        tape.push(`[${tape.length}] SUB [${n}] [1]`);
-        tape.push(`[${tape.length}] SUB [0] [0]`);
-        tape.push(`[${tape.length}] JNZ [0]`);
-        for (let i = n; i > 0; i--) {
-            tape.push(`[${tape.length}] SUB [${i}] [1]`);
-        }
-        return tape.join('\n');
-    }
-
-    // Agent Forge animation
-    function animateForge() {
-        const stages = document.querySelectorAll('.forge-stages .stage');
-        stages.forEach((stage, i) => {
-            stage.style.animationDelay = (i * 200) + 'ms';
-        });
-    }
-
-    // Streaming reasoning
-    function addReasoningEntry(stage, text) {
-        const entry = document.createElement('div');
-        entry.className = 'reasoning-entry';
-        entry.style.opacity = '0';
-        entry.style.transform = 'translateY(10px)';
-
-        const now = new Date();
-        const timestamp = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
-
-        entry.innerHTML = `
-            <span class="reasoning-timestamp">${timestamp}</span>
-            <span class="reasoning-stage is-${stage.toLowerCase()}">${stage}</span>
-            <p class="reasoning-text">${text}</p>
-        `;
-
-        reasoningStream.appendChild(entry);
-
-        // Animate in
-        requestAnimationFrame(() => {
-            entry.style.transition = 'all 0.3s ease';
-            entry.style.opacity = '1';
-            entry.style.transform = 'translateY(0)';
-        });
-
-        reasoningStream.scrollTop = reasoningStream.scrollHeight;
-    }
-
-    // Process command
-    function processCommand(cmd) {
-        // Check built-in commands
-        if (commands[cmd]) {
-            const result = commands[cmd]();
-            if (result) appendTerminalLine('output', result);
-            return;
-        }
-
-        // Check S-expression
-        const sExprResult = processSExpr(cmd);
-        if (sExprResult) {
-            animateForgePipeline(sExprResult);
-            return;
-        }
-
-        // Try WASM compile
-        if (wasmReady) {
-            try {
-                addReasoningEntry('Parsing', `Compiling: ${cmd}`);
-                const state = compile_and_run(cmd);
-                currentState = state;
-                addReasoningEntry('Execution', `Completed in ${state.step_count} steps`);
-
-                if (state.memory_json() !== '[]') {
-                    appendTerminalLine('result', `Memory: ${state.memory_json()}`);
-                }
-                appendTerminalLine('result', `PC: ${state.pc}, Steps: ${state.step_count}, Halted: ${state.halted}`);
-                updateTapeViewer(state);
-                return;
-            } catch(e) {
-                // Fall through to unknown
-            }
-        }
-
-        // Unknown command
-        appendTerminalLine('error', `Unknown command: ${cmd}. Type "help" for available commands.`);
-    }
-
-    // Update tape viewer with machine state
-    function updateTapeViewer(state) {
-        const cells = document.querySelectorAll('.tape-cell');
-        cells.forEach(cell => {
-            const addr = parseInt(cell.dataset.addr);
-            if (!isNaN(addr)) {
-                const val = state.get_memory_cell(addr);
-                cell.textContent = (val & 0xFF).toString(16).padStart(2, '0').toUpperCase();
-                cell.classList.toggle('is-active', val !== 0);
-            }
-        });
-    }
-
-    // Animate forge pipeline
-    function animateForgePipeline(result) {
-        const stages = document.querySelectorAll('.forge-stages .stage');
-        let currentStage = 0;
-
-        function advanceStage() {
-            if (currentStage < stages.length) {
-                // Reset all stages
-                stages.forEach(s => s.classList.remove('is-active', 'is-complete'));
-
-                // Mark previous stages as complete
-                for (let i = 0; i < currentStage; i++) {
-                    stages[i].classList.add('is-complete');
-                }
-
-                // Mark current stage as active
-                stages[currentStage].classList.add('is-active');
-
-                // Add reasoning entry
-                const stageNames = ['Parsing', 'Building AST', 'Lowering', 'Verification', 'Optimization', 'SUBLEQ Emit', 'Execution'];
-                const stageTexts = [
-                    `Received expression: ${result.input}`,
-                    `Constructed syntax tree`,
-                    `Lowered to intermediate representation`,
-                    `Type check and invariant verification passed`,
-                    `Applied optimization patterns`,
-                    `Generated SUBLEQ instructions`,
-                    `Execution complete`
-                ];
-
-                if (currentStage < stageNames.length) {
-                    addReasoningEntry(stageNames[currentStage], stageTexts[currentStage]);
-                }
-
-                currentStage++;
-                setTimeout(advanceStage, 400);
-            } else {
-                // All stages complete
-                stages[stages.length - 1].classList.add('is-complete');
-                stages[stages.length - 1].classList.remove('is-active');
-
-                // Show result
-                if (result.steps) {
-                    result.steps.forEach(step => appendTerminalLine('output', step));
-                }
-                appendTerminalLine('result', `→ ${result.result}`);
-
-                // Update timeline
-                document.getElementById('timeline-progress').style.width = '100%';
-            }
-        }
-
-        advanceStage();
-    }
-
-    // Terminal input handler
-    terminalInput.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const cmd = this.value.trim();
-            if (cmd) {
-                appendTerminalLine('input', cmd);
-                commandHistory.push(cmd);
-                historyIndex = commandHistory.length;
-                processCommand(cmd);
-                this.value = '';
-            }
-        } else if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            if (historyIndex > 0) {
-                historyIndex--;
-                this.value = commandHistory[historyIndex];
-            }
-        } else if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (historyIndex < commandHistory.length - 1) {
-                historyIndex++;
-                this.value = commandHistory[historyIndex];
-            } else {
-                historyIndex = commandHistory.length;
-                this.value = '';
-            }
-        }
-    });
-
-    function appendTerminalLine(type, text) {
-        const line = document.createElement('div');
-        line.className = 'terminal-line is-' + type;
-        if (type === 'input') {
-            line.innerHTML = '<span class="terminal-prompt">&#x279C;</span><span class="terminal-input">' + escapeHtml(text) + '</span>';
-        } else {
-            line.innerHTML = '<pre><code>' + escapeHtml(text) + '</code></pre>';
-        }
-        terminalOutput.appendChild(line);
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
-    }
-
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    // Timeline controls
-    document.getElementById('btn-play').addEventListener('click', function() {
-        const progress = document.getElementById('timeline-progress');
-        let width = parseFloat(progress.style.width) || 0;
-        if (width < 100) {
-            width += 16.6;
-            progress.style.width = Math.min(width, 100) + '%';
-        }
-    });
-
-    document.getElementById('btn-rewind').addEventListener('click', function() {
-        const progress = document.getElementById('timeline-progress');
-        let width = parseFloat(progress.style.width) || 0;
-        if (width > 0) {
-            width -= 16.6;
-            progress.style.width = Math.max(width, 0) + '%';
-        }
-    });
-
-    document.getElementById('btn-forward').addEventListener('click', function() {
-        document.getElementById('timeline-progress').style.width = '100%';
-    });
-
-    // Symbol Inspector
-    document.querySelectorAll('.symbol-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const name = this.querySelector('.symbol-name').textContent;
-            const type = this.querySelector('.symbol-type').textContent;
-            inspectSymbol(name, type);
-        });
-    });
-
-    function inspectSymbol(name, type) {
-        // Update right panel with symbol details
-        const stream = document.getElementById('reasoning-stream');
-        stream.innerHTML = `
-            <div class="reasoning-entry">
-                <span class="reasoning-timestamp">Inspector</span>
-                <span class="reasoning-stage is-building">Symbol Inspector</span>
-                <p class="reasoning-text">
-                    <strong>${name}</strong> (${type})<br><br>
-                    Type: ${type}<br>
-                    S-Expression: <code class="inline-code">(${name} n)</code><br>
-                    Autocode: <code class="inline-code">SUBLEQ_${name.toUpperCase()}</code><br>
-                    Memory: 0x${Math.floor(Math.random() * 0xFFFF).toString(16).padStart(4, '0')}<br>
-                    References: ${Math.floor(Math.random() * 10) + 1}<br>
-                    Proof: Type-safe, terminating
-                </p>
-            </div>
-        `;
-    }
-
-    // Focus terminal on page load
-    terminalInput.focus();
-    </script>
+    <!-- Modules -->
+    <script type="module" src="routes.js"></script>
+    <script type="module" src="sandbox64.js"></script>
+    <script type="module" src="symbolic-terminal.js"></script>
+    <script type="module" src="sexpr-parser.js"></script>
+    <script type="module" src="agent-forge.js"></script>
+    <script type="module" src="memory-tape.js"></script>
+    <script type="module" src="worm-receipts.js"></script>
+    <script type="module" src="feature-editor.js"></script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
