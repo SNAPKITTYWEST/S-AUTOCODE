@@ -30,7 +30,7 @@ export class FireworksAI {
             });
 
             // Use intelligent mock responses (CORS prevents direct API calls)
-            const aiResponse = this.generateSmartResponse(userMessage);
+            const aiResponse = await this.generateSmartResponse(userMessage);
 
             // Add AI response to history
             this.conversationHistory.push({
