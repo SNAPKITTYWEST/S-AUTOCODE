@@ -288,18 +288,29 @@ background-size:var(--grid-size) var(--grid-size)}
 ::-webkit-scrollbar-thumb:hover{background:var(--border-default)}
 ::selection{background:var(--bg-selection);color:var(--text-primary)}
 
-/* === AGENT CHAT === */
-.agent-chat-section{margin-bottom:12px}
-.agent-chat-label{font-size:var(--font-size-xs);font-weight:var(--font-weight-medium);color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-.agent-list{display:flex;flex-direction:column;gap:4px}
-.agent-btn{display:flex;align-items:center;gap:8px;width:100%;padding:8px 10px;background:var(--bg-primary);border:0.5px solid var(--border-hairline);border-radius:var(--radius-md);cursor:pointer;transition:all var(--duration-fast);text-align:left}
-.agent-btn:hover{background:var(--bg-secondary);border-color:var(--border-default)}
-.agent-btn.is-selected{background:var(--bg-selection);border-color:var(--accent-primary)}
-.agent-btn-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.agent-btn-name{font-size:var(--font-size-sm);font-weight:var(--font-weight-semibold);color:var(--text-primary)}
-.agent-btn-role{font-size:var(--font-size-xs);color:var(--text-tertiary);margin-left:auto}
-.agent-chat-box{background:var(--bg-primary);border:0.5px solid var(--border-hairline);border-radius:var(--radius-md);overflow:hidden;margin-bottom:12px}
-.agent-chat-messages{max-height:200px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
+/* === AGENT INSPECTOR === */
+.agent-heap{margin-bottom:12px}
+.agent-heap-label,.agent-inspector-const-label{font-size:var(--font-size-xs);font-weight:var(--font-weight-medium);color:var(--text-tertiary);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.agent-heap-list{display:flex;flex-direction:column;gap:3px}
+.agent-heap-btn{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;background:var(--bg-primary);border:0.5px solid var(--border-hairline);border-radius:var(--radius-sm);cursor:pointer;transition:all var(--duration-fast);text-align:left}
+.agent-heap-btn:hover{background:var(--bg-secondary);border-color:var(--border-default)}
+.agent-heap-btn.is-selected{background:var(--bg-selection);border-color:var(--accent-primary)}
+.agent-heap-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.agent-heap-name{font-size:var(--font-size-xs);font-weight:var(--font-weight-semibold);color:var(--text-primary)}
+.agent-heap-status{font-size:var(--font-size-xs);color:var(--status-success);margin-left:auto}
+.agent-inspector{background:var(--bg-primary);border:0.5px solid var(--border-hairline);border-radius:var(--radius-md);padding:10px;margin-bottom:12px}
+.agent-inspector-header{margin-bottom:8px}
+.agent-inspector-name{font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);color:var(--text-primary)}
+.agent-inspector-role{font-size:var(--font-size-xs);color:var(--text-tertiary)}
+.agent-inspector-grid{display:flex;flex-direction:column;gap:4px;margin-bottom:8px}
+.agent-inspector-row{display:flex;justify-content:space-between;font-size:var(--font-size-xs)}
+.agent-inspector-label{color:var(--text-tertiary)}
+.agent-inspector-value{color:var(--text-primary);font-family:var(--font-mono);font-weight:var(--font-weight-medium)}
+.agent-inspector-constitution{border-top:0.5px solid var(--border-hairline);padding-top:8px}
+.agent-inspector-const-rule{font-size:var(--font-size-xs);color:var(--text-secondary);font-family:var(--font-mono);line-height:1.6}
+.agent-inspector-result{color:var(--status-success);font-weight:var(--font-weight-bold)}
+.agent-chat-box{background:var(--bg-primary);border:0.5px solid var(--border-hairline);border-radius:var(--radius-md);overflow:hidden}
+.agent-chat-messages{max-height:150px;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:6px}
 .agent-chat-msg{display:flex;flex-direction:column;gap:2px}
 .agent-chat-msg.is-system .agent-chat-text{color:var(--text-tertiary);font-style:italic;font-size:var(--font-size-xs)}
 .agent-chat-msg.is-agent .agent-chat-text{color:var(--text-primary);background:var(--bg-secondary);padding:6px 8px;border-radius:var(--radius-sm);border:0.5px solid var(--border-hairline);font-size:var(--font-size-sm)}

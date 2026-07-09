@@ -129,41 +129,80 @@
                         </div>
                     </main>
 
-                    <!-- Right: Agent Chat + Reasoning -->
+                    <!-- Right: Agent Inspector + Chat -->
                     <aside class="panel panel-right">
                         <div class="panel-header">
-                            <h3 class="panel-title">Agents</h3>
+                            <h3 class="panel-title">Agent Inspector</h3>
                         </div>
                         <div class="panel-content">
-                            <!-- Agent List -->
-                            <div class="agent-chat-section">
-                                <div class="agent-chat-label">Select an agent:</div>
-                                <div class="agent-list" id="agent-list">
-                                    <button class="agent-btn" data-agent="forge">
-                                        <span class="agent-btn-dot" style="background:#5e6ad2"></span>
-                                        <span class="agent-btn-name">FORGE</span>
-                                        <span class="agent-btn-role">Compiler</span>
+                            <!-- Agent Heap -->
+                            <div class="agent-heap">
+                                <div class="agent-heap-label">Agent Heap</div>
+                                <div class="agent-heap-list" id="agent-heap-list">
+                                    <button class="agent-heap-btn is-selected" data-agent="forge">
+                                        <span class="agent-heap-dot" style="background:#5e6ad2"></span>
+                                        <span class="agent-heap-name">FORGE</span>
+                                        <span class="agent-heap-status">online</span>
                                     </button>
-                                    <button class="agent-btn" data-agent="sentinel">
-                                        <span class="agent-btn-dot" style="background:#34c759"></span>
-                                        <span class="agent-btn-name">SENTINEL</span>
-                                        <span class="agent-btn-role">Security</span>
+                                    <button class="agent-heap-btn" data-agent="sentinel">
+                                        <span class="agent-heap-dot" style="background:#34c759"></span>
+                                        <span class="agent-heap-name">SENTINEL</span>
+                                        <span class="agent-heap-status">online</span>
                                     </button>
-                                    <button class="agent-btn" data-agent="oracle">
-                                        <span class="agent-btn-dot" style="background:#f5a623"></span>
-                                        <span class="agent-btn-name">ORACLE</span>
-                                        <span class="agent-btn-role">Analyzer</span>
+                                    <button class="agent-heap-btn" data-agent="oracle">
+                                        <span class="agent-heap-dot" style="background:#f5a623"></span>
+                                        <span class="agent-heap-name">ORACLE</span>
+                                        <span class="agent-heap-status">online</span>
                                     </button>
-                                    <button class="agent-btn" data-agent="codex">
-                                        <span class="agent-btn-dot" style="background:#4a90e2"></span>
-                                        <span class="agent-btn-name">CODEX</span>
-                                        <span class="agent-btn-role">Docs</span>
+                                    <button class="agent-heap-btn" data-agent="codex">
+                                        <span class="agent-heap-dot" style="background:#4a90e2"></span>
+                                        <span class="agent-heap-name">CODEX</span>
+                                        <span class="agent-heap-status">online</span>
                                     </button>
-                                    <button class="agent-btn" data-agent="vault">
-                                        <span class="agent-btn-dot" style="background:#bd10e0"></span>
-                                        <span class="agent-btn-name">VAULT</span>
-                                        <span class="agent-btn-role">Storage</span>
+                                    <button class="agent-heap-btn" data-agent="vault">
+                                        <span class="agent-heap-dot" style="background:#bd10e0"></span>
+                                        <span class="agent-heap-name">VAULT</span>
+                                        <span class="agent-heap-status">online</span>
                                     </button>
+                                </div>
+                            </div>
+
+                            <!-- Agent Inspector Panel -->
+                            <div class="agent-inspector" id="agent-inspector">
+                                <div class="agent-inspector-header">
+                                    <div class="agent-inspector-name" id="inspector-name">FORGE</div>
+                                    <div class="agent-inspector-role" id="inspector-role">Compiler</div>
+                                </div>
+                                <div class="agent-inspector-grid">
+                                    <div class="agent-inspector-row">
+                                        <span class="agent-inspector-label">Trust</span>
+                                        <span class="agent-inspector-value" id="inspector-trust">HIGH</span>
+                                    </div>
+                                    <div class="agent-inspector-row">
+                                        <span class="agent-inspector-label">Domain</span>
+                                        <span class="agent-inspector-value" id="inspector-domain">compilation</span>
+                                    </div>
+                                    <div class="agent-inspector-row">
+                                        <span class="agent-inspector-label">Last Action</span>
+                                        <span class="agent-inspector-value" id="inspector-action">compile ✓</span>
+                                    </div>
+                                    <div class="agent-inspector-row">
+                                        <span class="agent-inspector-label">WORM Entries</span>
+                                        <span class="agent-inspector-value" id="inspector-worm">247</span>
+                                    </div>
+                                    <div class="agent-inspector-row">
+                                        <span class="agent-inspector-label">Proposals</span>
+                                        <span class="agent-inspector-value" id="inspector-proposals">44 approved</span>
+                                    </div>
+                                </div>
+                                <div class="agent-inspector-constitution">
+                                    <div class="agent-inspector-const-label">Constitution</div>
+                                    <div class="agent-inspector-const-rule" id="inspector-rule">
+                                        can_execute(forge, compile)?<br>
+                                        trust_gte(high, medium) ✓<br>
+                                        domain_ok(compilation, any) ✓<br>
+                                        <span class="agent-inspector-result">RESULT: APPROVED</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -171,20 +210,13 @@
                             <div class="agent-chat-box" id="agent-chat-box">
                                 <div class="agent-chat-messages" id="agent-chat-messages">
                                     <div class="agent-chat-msg is-system">
-                                        <span class="agent-chat-sender">System</span>
-                                        <span class="agent-chat-text">Select an agent above to start chatting.</span>
+                                        <span class="agent-chat-text">Select an agent above to inspect.</span>
                                     </div>
                                 </div>
                                 <div class="agent-chat-input-area">
-                                    <input type="text" class="agent-chat-input" id="agent-chat-input" placeholder="Type a message to the agent...">
+                                    <input type="text" class="agent-chat-input" id="agent-chat-input" placeholder="Ask the agent...">
                                     <button class="btn btn-mini" id="agent-chat-send">Send</button>
                                 </div>
-                            </div>
-
-                            <!-- Reasoning Stream -->
-                            <div class="reasoning-section">
-                                <div class="reasoning-label-header">Reasoning Stream</div>
-                                <div class="reasoning-stream" id="reasoning-stream"></div>
                             </div>
                         </div>
                     </aside>

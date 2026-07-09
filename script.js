@@ -13,22 +13,22 @@ const state = {
 };
 
 const agentProfiles = {
-    forge: { name: 'FORGE', role: 'Compiler', color: '#5e6ad2', personality: 'I am FORGE, the compiler agent. I transform natural language into formal SUBLEQ instructions. Ask me to compile code or write programs.' },
-    sentinel: { name: 'SENTINEL', role: 'Security', color: '#34c759', personality: 'I am SENTINEL, the security agent. I verify bounds, check memory safety, and seal WORM receipts. I protect the system.' },
-    oracle: { name: 'ORACLE', role: 'Analyzer', color: '#f5a623', personality: 'I am ORACLE, the analysis agent. I analyze programs, detect bugs, verify types, and suggest optimizations.' },
-    codex: { name: 'CODEX', role: 'Documentation', color: '#4a90e2', personality: 'I am CODEX, the documentation agent. I write docs, explain code, and generate proofs.' },
-    vault: { name: 'VAULT', role: 'Storage', color: '#bd10e0', personality: 'I am VAULT, the storage agent. I manage the WORM chain, store programs, and maintain the ledger.' }
+    forge: { name: 'FORGE', role: 'Compiler', color: '#5e6ad2', trust: 'HIGH', domain: 'compilation', action: 'compile ✓', worm: 247, proposals: '44 approved', rule: 'can_execute(forge, compile)?<br>trust_gte(high, medium) ✓<br>domain_ok(compilation, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
+    sentinel: { name: 'SENTINEL', role: 'Security', color: '#34c759', trust: 'HIGH', domain: 'security', action: 'audit_scan ✓', worm: 312, proposals: '56 approved', rule: 'can_execute(sentinel, audit_scan)?<br>trust_gte(high, medium) ✓<br>domain_ok(security, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
+    oracle: { name: 'ORACLE', role: 'Analyzer', color: '#f5a623', trust: 'MEDIUM', domain: 'analysis', action: 'type_check ✓', worm: 189, proposals: '38 approved', rule: 'can_execute(oracle, type_check)?<br>trust_gte(medium, medium) ✓<br>domain_ok(analysis, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
+    codex: { name: 'CODEX', role: 'Docs', color: '#4a90e2', trust: 'MEDIUM', domain: 'documentation', action: 'write_proof ✓', worm: 156, proposals: '29 approved', rule: 'can_execute(codex, write_proof)?<br>trust_gte(medium, low) ✓<br>domain_ok(docs, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' },
+    vault: { name: 'VAULT', role: 'Storage', color: '#bd10e0', trust: 'HIGH', domain: 'storage', action: 'seal_chain ✓', worm: 420, proposals: '61 approved', rule: 'can_execute(vault, seal_chain)?<br>trust_gte(high, medium) ✓<br>domain_ok(storage, any) ✓<br><span class="agent-inspector-result">RESULT: APPROVED</span>' }
 };
 
 function setupAgentChat() {
-    const agentBtns = document.querySelectorAll('.agent-btn');
+    const agentBtns = document.querySelectorAll('.agent-heap-btn');
     const chatInput = document.getElementById('agent-chat-input');
     const chatSend = document.getElementById('agent-chat-send');
     const chatMessages = document.getElementById('agent-chat-messages');
     
     if (!chatInput || !chatSend || !chatMessages) return;
     
-    let selectedAgent = null;
+    let selectedAgent = 'forge';
     
     // Agent selection
     agentBtns.forEach(btn => {
@@ -37,12 +37,22 @@ function setupAgentChat() {
             btn.classList.add('is-selected');
             selectedAgent = btn.dataset.agent;
             
-            // Show intro
+            // Update inspector
             const profile = agentProfiles[selectedAgent];
             if (profile) {
+                document.getElementById('inspector-name').textContent = profile.name;
+                document.getElementById('inspector-role').textContent = profile.role;
+                document.getElementById('inspector-trust').textContent = profile.trust;
+                document.getElementById('inspector-domain').textContent = profile.domain;
+                document.getElementById('inspector-action').textContent = profile.action;
+                document.getElementById('inspector-worm').textContent = profile.worm;
+                document.getElementById('inspector-proposals').textContent = profile.proposals;
+                document.getElementById('inspector-rule').innerHTML = profile.rule;
+                
+                // Clear and show greeting in chat
                 chatMessages.innerHTML = '';
-                appendChatMsg(chatMessages, 'system', 'System', `${profile.name} is online.`);
-                appendChatMsg(chatMessages, 'agent', profile.name, profile.personality);
+                appendChatMsg(chatMessages, 'system', `${profile.name} is online. Trust: ${profile.trust}`);
+                appendChatMsg(chatMessages, 'agent', profile.name, `I am ${profile.name}, the ${profile.role.toLowerCase()} agent. ${profile.trust} trust. ${profile.worm} WORM entries sealed.`);
             }
         });
     });
@@ -50,12 +60,12 @@ function setupAgentChat() {
     // Send message
     function sendChat() {
         const msg = chatInput.value.trim();
-        if (!msg || !selectedAgent) return;
+        if (!msg) return;
         
         appendChatMsg(chatMessages, 'user', 'You', msg);
         chatInput.value = '';
         
-        // Agent response (deterministic SUBLEQ-based, not LLM)
+        // Agent response
         setTimeout(() => {
             const response = getAgentResponse(selectedAgent, msg);
             const profile = agentProfiles[selectedAgent];
