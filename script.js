@@ -34,9 +34,35 @@ function initTerminal() {
     state.terminal.bind();
     state.terminal.initWasm();
     
+    // Show welcome guide
+    showWelcomeGuide();
+    
     // Wire terminal buttons
     document.getElementById('btn-clear')?.addEventListener('click', () => state.terminal.clear());
     document.getElementById('btn-export')?.addEventListener('click', exportSession);
+}
+
+function showWelcomeGuide() {
+    const t = state.terminal;
+    t.appendLine('output', '');
+    t.appendLine('output', '=== S-AUTOCODE SOVEREIGN RUNTIME ===');
+    t.appendLine('output', '');
+    t.appendLine('output', 'START HERE - Type any of these:');
+    t.appendLine('output', '');
+    t.appendLine('output', '  factorial 5        -> Computes 5! = 120');
+    t.appendLine('output', '  sum 10 20 30       -> Computes 10+20+30 = 60');
+    t.appendLine('output', '  help               -> Shows all commands');
+    t.appendLine('output', '  chain              -> Shows WORM blockchain');
+    t.appendLine('output', '  agents             -> Shows all 5 agents');
+    t.appendLine('output', '  proofs             -> Shows proof obligations');
+    t.appendLine('output', '');
+    t.appendLine('output', 'NAVIGATION:');
+    t.appendLine('output', '  Ctrl+K             -> Open command palette');
+    t.appendLine('output', '  Click menu items   -> Navigate between views');
+    t.appendLine('output', '');
+    t.appendLine('output', 'Click on symbols in the left panel to inspect them.');
+    t.appendLine('output', '=========================================');
+    t.appendLine('output', '');
 }
 
 // Process terminal commands
@@ -46,19 +72,31 @@ function processCommand(cmd, terminal) {
     
     // Built-in commands
     if (cmd === 'help') {
-        terminal.appendLine('output', `Commands:
-  factorial <n>      Compute factorial
-  sum <a> <b>        Compute sum
-  subleq <expr>      Compile to SUBLEQ
-  memory             Show memory state
-  trace              Show execution trace
-  chain              Show WORM chain
-  agents             List agents
-  proofs             Show proof status
-  clear              Clear terminal
-  export             Export session
-  sandbox            Open sandbox view
-  route <path>       Navigate to route`);
+        terminal.appendLine('output', `=========================================
+  S-AUTOCODE COMMAND REFERENCE
+=========================================
+
+MATH COMMANDS:
+  factorial 5          Compute 5! = 120
+  factorial 10         Compute 10! = 3628800
+  sum 1 2 3            Compute 1+2+3 = 6
+
+SYSTEM COMMANDS:
+  memory               Show memory state
+  trace                Show execution trace
+  chain                Show WORM blockchain
+  agents               List all 5 agents
+  proofs               Show proof obligations
+  clear                Clear terminal
+  export               Export session as JSON
+  sandbox              Open sandbox view
+
+NAVIGATION:
+  Ctrl+K               Open command palette
+  Click menu           Navigate between views
+  Click symbols        Inspect symbol details
+
+Try typing: factorial 5`);
         return;
     }
     
