@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="400" viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="400" fill="#0a0a0a"/>
+  
+  <!-- Grid Pattern -->
+  <defs>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M 64 0 L 0 0 0 64" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="400" fill="url(#grid)"/>
+  
+  <!-- Glow Effect -->
+  <defs>
+    <radialGradient id="centerGlow">
+      <stop offset="0%" style="stop-color:#5e6ad2;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#5e6ad2;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  <ellipse cx="600" cy="200" rx="400" ry="200" fill="url(#centerGlow)"/>
+  
+  <!-- Logo Symbol -->
+  <text x="300" y="240" font-family="Arial, sans-serif" font-size="120" fill="#5e6ad2" text-anchor="middle" font-weight="bold">⦹</text>
+  
+  <!-- Title -->
+  <text x="500" y="180" font-family="'SF Pro Display', Arial, sans-serif" font-size="72" fill="#e8e8e8" font-weight="600" letter-spacing="2">S-AUTOCODE</text>
+  
+  <!-- Subtitle -->
+  <text x="500" y="230" font-family="'SF Pro Display', Arial, sans-serif" font-size="28" fill="#a0a0a0" font-weight="400">Sovereign Runtime Interface</text>
+  
+  <!-- Feature Pills -->
+  <g transform="translate(500, 270)">
+    <!-- AI Agent -->
+    <rect x="0" y="0" width="120" height="32" rx="16" fill="rgba(94,106,210,0.15)" stroke="#5e6ad2" stroke-width="1"/>
+    <text x="60" y="21" font-family="Arial, sans-serif" font-size="14" fill="#5e6ad2" text-anchor="middle" font-weight="500">🤖 AI Agent</text>
+    
+    <!-- Monaco Editor -->
+    <rect x="130" y="0" width="150" height="32" rx="16" fill="rgba(52,199,89,0.15)" stroke="#34c759" stroke-width="1"/>
+    <text x="205" y="21" font-family="Arial, sans-serif" font-size="14" fill="#34c759" text-anchor="middle" font-weight="500">💻 Monaco Editor</text>
+    
+    <!-- Bash Control -->
+    <rect x="290" y="0" width="140" height="32" rx="16" fill="rgba(245,166,35,0.15)" stroke="#f5a623" stroke-width="1"/>
+    <text x="360" y="21" font-family="Arial, sans-serif" font-size="14" fill="#f5a623" text-anchor="middle" font-weight="500">🔧 Bash Control</text>
+  </g>
+  
+  <!-- Agent Dots -->
+  <g opacity="0.6">
+    <circle cx="150" cy="100" r="6" fill="#34c759">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1050" cy="100" r="6" fill="#f5a623">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="150" cy="300" r="6" fill="#4a90e2">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="1050" cy="300" r="6" fill="#bd10e0">
+      <animate attributeName="opacity" values="0.3;1;0.3" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- Connecting Lines -->
+  <g opacity="0.2">
+    <line x1="150" y1="100" x2="300" y2="200" stroke="#5e6ad2" stroke-width="1"/>
+    <line x1="1050" y1="100" x2="900" y2="200" stroke="#5e6ad2" stroke-width="1"/>
+    <line x1="150" y1="300" x2="300" y2="200" stroke="#5e6ad2" stroke-width="1"/>
+    <line x1="1050" y1="300" x2="900" y2="200" stroke="#5e6ad2" stroke-width="1"/>
+  </g>
+</svg>
+
+<!-- Made with Bob -->
