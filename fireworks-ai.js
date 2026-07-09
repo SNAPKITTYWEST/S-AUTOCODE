@@ -1,4 +1,6 @@
 // fireworks-ai.js — Fireworks AI Integration for CODEX Agent
+import { codexTools } from './codex-tools.js';
+
 export class FireworksAI {
     constructor() {
         this.apiKey = 'fw_nWm5Lhhp8mbShSuFyJwws';
@@ -9,6 +11,8 @@ export class FireworksAI {
         this.isThinking = false;
         // Use mock responses (CORS blocks direct API calls from browser)
         this.useMock = true;
+        this.tools = codexTools;
+        this.toolUseEnabled = true;
     }
 
     async chat(userMessage, systemPrompt = null) {
@@ -43,8 +47,13 @@ export class FireworksAI {
         }
     }
 
-    generateSmartResponse(message) {
+    async generateSmartResponse(message) {
         const lower = message.toLowerCase();
+        
+        // Tool use detection
+        if (this.toolUseEnabled && this.detectToolUse(lower)) {
+            return await this.handleToolUse(message, lower);
+        }
         
         // Code generation requests
         if (lower.includes('write') || lower.includes('create') || lower.includes('generate')) {
@@ -67,14 +76,87 @@ export class FireworksAI {
         }
         
         // Default helpful response
-        return `I'm CODEX, your AI coding assistant. I can:
+        return `I'm CODEX, your AI coding assistant with tool access! I can:
 • Write code in any language
+• Execute bash commands (git, npm, etc.)
+• Read and write files
+• Search and analyze code
 • Debug and fix errors
 • Explain technical concepts
-• Review and optimize code
-• Generate algorithms
+
+**Try these commands:**
+• "run git status"
+• "list files in this directory"
+• "read script.js"
+• "search for 'fireworks' in all files"
 
 What would you like help with?`;
+    }
+
+    detectToolUse(lower) {
+        const toolKeywords = [
+            'run', 'execute', 'command', 'bash', 'git', 'npm',
+            'read file', 'write file', 'create file', 'list files',
+            'search', 'find', 'grep', 'analyze'
+        ];
+        return toolKeywords.some(keyword => lower.includes(keyword));
+    }
+
+    async handleToolUse(message, lower) {
+        // Execute command
+        if (lower.includes('run ') || lower.includes('execute ')) {
+            const command = message.match(/(?:run|execute)\s+(.+)/i)?.[1];
+            if (command) {
+                const result = await this.tools.executeCommand(command);
+                return `**Command:** \`${result.command}\`\n\n**Output:**\n\`\`\`\n${result.output}\n\`\`\`\n\n**Exit code:** ${result.exitCode}`;
+            }
+        }
+        
+        // Git commands
+        if (lower.includes('git ')) {
+            const gitCmd = message.match(/git\s+.+/i)?.[0];
+            if (gitCmd) {
+                const result = await this.tools.executeCommand(gitCmd);
+                return `**Git command:** \`${gitCmd}\`\n\n\`\`\`\n${result.output}\n\`\`\``;
+            }
+        }
+        
+        // List files
+        if (lower.includes('list files') || lower.includes('ls') || lower.includes('dir')) {
+            const result = await this.tools.listFiles('.');
+            return `**Files in current directory:**\n\n${result.files.map(f => `• ${f}`).join('\n')}\n\n**Total:** ${result.count} files`;
+        }
+        
+        // Read file
+        if (lower.includes('read ') || lower.includes('show ') || lower.includes('cat ')) {
+            const file = message.match(/(?:read|show|cat)\s+(\S+)/i)?.[1];
+            if (file) {
+                const result = await this.tools.readFile(file);
+                return `**File:** ${result.path} (${result.lines} lines)\n\n\`\`\`javascript\n${result.content}\n\`\`\``;
+            }
+        }
+        
+        // Search files
+        if (lower.includes('search') || lower.includes('find') || lower.includes('grep')) {
+            const query = message.match(/(?:search|find|grep)\s+(?:for\s+)?['"]?(.+?)['"]?(?:\s+in)?/i)?.[1];
+            if (query) {
+                const result = await this.tools.searchFiles('.', query);
+                return `**Search results for "${query}":**\n\n${result.matches.map(m => `• **${m.file}:${m.line}**\n  \`${m.content}\``).join('\n\n')}`;
+            }
+        }
+        
+        // Analyze code
+        if (lower.includes('analyze')) {
+            return `**Code Analysis Tools Available:**
+• Complexity analysis
+• Code quality metrics
+• Security scanning
+• Performance profiling
+
+Ask me to analyze specific code or files!`;
+        }
+        
+        return 'I detected you want to use a tool, but I need more details. Try:\n• "run git status"\n• "list files"\n• "read script.js"\n• "search for fireworks"';
     }
 
     pythonCodeResponse(message) {
