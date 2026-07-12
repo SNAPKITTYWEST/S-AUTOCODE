@@ -9,13 +9,12 @@ export class FireworksAI {
         this.apiUrl = 'https://api.fireworks.ai/inference/v1/chat/completions';
         this.conversationHistory = [];
         this.isThinking = false;
-        // Use mock responses (CORS blocks direct API calls from browser)
         this.useMock = true;
         this.tools = codexTools;
         this.toolUseEnabled = true;
     }
 
-    async chat(userMessage, systemPrompt = null) {
+    async chat(userMessage, systemPrompt = null, options = {}) {
         if (this.isThinking) {
             throw new Error('Agent is already thinking');
         }
@@ -29,8 +28,7 @@ export class FireworksAI {
                 content: userMessage
             });
 
-            // Use intelligent mock responses (CORS prevents direct API calls)
-            const aiResponse = await this.generateSmartResponse(userMessage);
+            const aiResponse = await this.generateResponse(userMessage, systemPrompt);
 
             // Add AI response to history
             this.conversationHistory.push({
@@ -38,12 +36,101 @@ export class FireworksAI {
                 content: aiResponse
             });
 
+            await this.streamResponse(aiResponse, options.onToken);
+
             return aiResponse;
         } catch (error) {
             console.error('CODEX error:', error);
             throw error;
         } finally {
             this.isThinking = false;
+        }
+    }
+
+    async generateResponse(message, systemPrompt = null) {
+        if (!this.useMock) {
+            try {
+                return await this.queryProxy(message, systemPrompt);
+            } catch (error) {
+                console.warn('CODEX proxy unavailable, using local fallback:', error);
+            }
+        }
+
+        try {
+            return await this.queryProxy(message, systemPrompt);
+        } catch (_) {
+            return this.generateSmartResponse(message);
+        }
+    }
+
+    // Bridge-aware endpoint resolution
+    // /api/bridge endpoints use { action: "ai", messages } payload
+    // local proxy uses plain Fireworks body
+    isBridgeEndpoint(endpoint) {
+        return endpoint && (
+            endpoint.includes('/api/bridge') ||
+            endpoint.includes('collectivekitty.com')
+        );
+    }
+
+    async queryProxy(message, systemPrompt = null) {
+        const endpoints = this.getCandidateEndpoints();
+        const messages = [
+            ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+            ...this.conversationHistory,
+            { role: 'user', content: message }
+        ];
+
+        let lastError = null;
+        for (const endpoint of endpoints) {
+            try {
+                // Bridge endpoint uses action wrapper; local proxy uses plain body
+                const body = this.isBridgeEndpoint(endpoint)
+                    ? { action: 'ai', messages, temperature: 0.3, max_tokens: 1200 }
+                    : { messages, temperature: 0.3, max_tokens: 1200 };
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                    signal: AbortSignal.timeout(15000),
+                });
+                if (!response.ok) {
+                    lastError = new Error(`AI proxy ${endpoint} returned ${response.status}`);
+                    continue;
+                }
+                const data = await response.json();
+                const content = data?.choices?.[0]?.message?.content || data?.content || data?.response;
+                if (content) return content;
+            } catch (error) {
+                lastError = error;
+            }
+        }
+
+        throw lastError || new Error('No AI proxy endpoints available');
+    }
+
+    getCandidateEndpoints() {
+        const endpoints = [
+            window.S_AUTOCODE_CONFIG?.aiEndpoint,
+            localStorage.getItem('s_autocode_ai_endpoint'),
+            // Bridge endpoint first (collectivekitty.com Cloudflare Worker)
+            'https://collectivekitty.com/api/bridge',
+            // Local proxy fallback
+            'http://localhost:8765',
+        ].filter(Boolean);
+
+        return [...new Set(endpoints)];
+    }
+
+    async streamResponse(text, onToken) {
+        if (!onToken) return;
+
+        const chunks = text.split(/(\s+)/);
+        for (const chunk of chunks) {
+            if (!chunk) continue;
+            onToken(chunk);
+            await new Promise((resolve) => setTimeout(resolve, Math.min(25, Math.max(8, chunk.length * 2))));
         }
     }
 
@@ -60,7 +147,7 @@ export class FireworksAI {
             if (lower.includes('python')) return this.pythonCodeResponse(message);
             if (lower.includes('javascript') || lower.includes('js')) return this.jsCodeResponse(message);
             if (lower.includes('rust')) return this.rustCodeResponse(message);
-            return 'I can help you write code! Specify the language (Python, JavaScript, Rust, etc.) and what you need.';
+            return 'I can help you write code. Name the language and the program, then tell me whether to create a new file, update the current file, or run it.';
         }
         
         // Debugging
@@ -76,21 +163,13 @@ export class FireworksAI {
         }
         
         // Default helpful response
-        return `I'm CODEX, your AI coding assistant with tool access! I can:
-• Write code in any language
-• Execute bash commands (git, npm, etc.)
-• Read and write files
-• Search and analyze code
-• Debug and fix errors
-• Explain technical concepts
+        return `I'm CODEX. I can create files, stream code into the editor, explain changes, and run the current file when a runtime exists.
 
-**Try these commands:**
-• "run git status"
-• "list files in this directory"
-• "read script.js"
-• "search for 'fireworks' in all files"
-
-What would you like help with?`;
+Try:
+- "create app.py that prints fibonacci numbers"
+- "open editor main.js and build a todo app"
+- "run current file"
+- "explain this code and lower it to S-expressions"`;
     }
 
     detectToolUse(lower) {
@@ -105,33 +184,25 @@ What would you like help with?`;
 
     async handleToolUse(message, lower) {
         // Open Editor and Write Code
-        if (lower.includes('open editor') || lower.includes('edit file')) {
-            const file = message.match(/(?:open editor|edit file|edit)\s+(\S+)/i)?.[1] || 'untitled.js';
+        if (lower.includes('open editor') || lower.includes('edit file') || lower.includes('create file') || lower.includes('new file')) {
+            const file = message.match(/(?:open editor|edit file|edit|create file|new file)\s+(\S+)/i)?.[1] || 'untitled.js';
             
             // Check if they want to write code too
             if (lower.includes('write') || lower.includes('create') || lower.includes('generate')) {
                 // Generate the code first
-                let code = '';
-                if (lower.includes('fibonacci')) {
-                    code = this.generateFibonacciCode(file);
-                } else if (lower.includes('hello') || lower.includes('world')) {
-                    code = this.generateHelloWorld(file);
-                } else {
-                    code = `# ${file}\n# Generated by CODEX\n\ndef example():\n    pass\n`;
-                }
+                const code = this.generateCodeForIntent(message, file);
                 
-                // Open editor WITHOUT code (empty)
                 const result = await this.tools.openEditor(file, '');
                 
                 // Schedule typing animation to run AFTER response is shown
                 // Store it so script.js can trigger it
                 this.pendingAnimation = () => this.typeCodeInEditor(code);
                 
-                return `✅ ${result.message}\n\n**Typing code into editor now...**\n\n\`\`\`\n${code}\n\`\`\``;
+                return `Opened ${file}. I am streaming the file into the editor now.\n\n\`\`\`${this.codeFenceForFile(file)}\n${code}\n\`\`\``;
             }
             
             const result = await this.tools.openEditor(file);
-            return `✅ ${result.message}\n\nMonaco Editor is now open. You can start coding!`;
+            return `${result.message}. Monaco is ready for edits.`;
         }
         
         // Open Browser/KittyBrowse
@@ -156,9 +227,15 @@ What would you like help with?`;
             const command = message.match(/(?:run|execute)\s+(.+)/i)?.[1];
             if (command) {
                 const result = await this.tools.executeCommand(command);
-                const realBadge = result.real ? '🔴 REAL BASH' : '🟡 SIMULATED';
-                return `**Command:** \`${result.command}\` ${realBadge}\n\n**Output:**\n\`\`\`\n${result.output}\n\`\`\`\n\n**Exit code:** ${result.exitCode}`;
+                const realBadge = result.real ? 'REAL' : 'SIMULATED';
+                return `Command: \`${result.command}\` [${realBadge}]\n\nOutput:\n\`\`\`\n${result.output}\n\`\`\`\n\nExit code: ${result.exitCode}`;
             }
+        }
+
+        if (lower.includes('run current file') || lower.includes('build current file') || lower.includes('preview current file')) {
+            const command = lower.includes('build') ? 'build' : lower.includes('preview') ? 'preview' : 'run';
+            const result = await this.tools.executeCommand(command);
+            return `Current file command: \`${command}\`\n\n\`\`\`\n${result.output}\n\`\`\``;
         }
         
         // Git commands
@@ -220,13 +297,55 @@ Ask me to analyze specific code or files!`;
         
         // Clear editor first
         window.monacoEditor.setValue('');
-        
+
         // Type character by character
         for (let i = 0; i < code.length; i++) {
             const currentCode = code.substring(0, i + 1);
             window.monacoEditor.setValue(currentCode);
             await new Promise(resolve => setTimeout(resolve, speed));
         }
+
+        const file = this.tools.getCurrentFile?.();
+        if (file) {
+            await this.tools.writeFile(file, code);
+        }
+    }
+
+    generateCodeForIntent(message, filename) {
+        const lower = message.toLowerCase();
+        if (lower.includes('fibonacci')) {
+            return this.generateFibonacciCode(filename);
+        }
+        if (lower.includes('todo')) {
+            if (filename.endsWith('.js')) {
+                return `const tasks = [];\n\nfunction addTask(title) {\n    tasks.push({ title, done: false });\n}\n\nfunction completeTask(index) {\n    if (tasks[index]) tasks[index].done = true;\n}\n\naddTask("Ship S-AUTOCODE");\ncompleteTask(0);\nconsole.log(tasks);\n`;
+            }
+            if (filename.endsWith('.py')) {
+                return `tasks = []\n\ndef add_task(title):\n    tasks.append({\"title\": title, \"done\": False})\n\ndef complete_task(index):\n    if 0 <= index < len(tasks):\n        tasks[index][\"done\"] = True\n\nadd_task(\"Ship S-AUTOCODE\")\ncomplete_task(0)\nprint(tasks)\n`;
+            }
+        }
+        if (lower.includes('hello') || lower.includes('world')) {
+            return this.generateHelloWorld(filename);
+        }
+        if (filename.endsWith('.html')) {
+            return '<!doctype html>\n<html>\n  <body>\n    <main>\n      <h1>S-AUTOCODE App</h1>\n      <p>Generated by CODEX.</p>\n    </main>\n  </body>\n</html>\n';
+        }
+        if (filename.endsWith('.py')) {
+            return 'def main():\n    print("Generated by CODEX")\n\nif __name__ == "__main__":\n    main()\n';
+        }
+        return `console.log("Generated by CODEX for ${filename}");\n`;
+    }
+
+    codeFenceForFile(file) {
+        const ext = file.split('.').pop()?.toLowerCase();
+        const map = {
+            js: 'javascript',
+            py: 'python',
+            html: 'html',
+            ac: 'autocode',
+            rs: 'rust'
+        };
+        return map[ext] || '';
     }
 
     // Generate fibonacci code

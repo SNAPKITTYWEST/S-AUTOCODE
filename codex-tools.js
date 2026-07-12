@@ -1,5 +1,6 @@
 // codex-tools.js — Tool system for CODEX agent
 // Real integration with S-AUTOCODE UI, Monaco Editor, and bash execution
+import { runtimeEngine } from './runtime-engine.js';
 
 export class CodexTools {
     constructor() {
@@ -16,13 +17,55 @@ export class CodexTools {
             analyze_code: this.analyzeCode.bind(this)
         };
         this.commandHistory = [];
-        this.fileSystem = new Map();
+        this.fileSystem = this.loadWorkspace();
+        this.currentFile = '';
         this.bashInBashOut = null; // Will be set by main app
+        this.runtimeHandler = null;
     }
 
     // Set bash execution handler (from main app)
     setBashHandler(handler) {
         this.bashInBashOut = handler;
+    }
+
+    setRuntimeHandler(handler) {
+        this.runtimeHandler = handler;
+    }
+
+    loadWorkspace() {
+        try {
+            const raw = localStorage.getItem('s-autocode-workspace');
+            if (!raw) return new Map([
+                ['main.js', 'console.log("Hello from S-AUTOCODE");\n'],
+                ['main.py', 'print("Hello from S-AUTOCODE")\n'],
+                ['program.ac', '; S-AUTOCODE program\n+ 0 1 2\n- 2 1 0\n']
+            ]);
+
+            const entries = JSON.parse(raw);
+            return new Map(entries);
+        } catch (error) {
+            console.warn('[CODEX] Failed to load workspace, seeding defaults:', error);
+            return new Map();
+        }
+    }
+
+    persistWorkspace() {
+        localStorage.setItem('s-autocode-workspace', JSON.stringify(Array.from(this.fileSystem.entries())));
+    }
+
+    setCurrentFile(path) {
+        this.currentFile = path;
+        localStorage.setItem('s-autocode-current-file', path);
+        const currentEl = document.getElementById('editor-current-file');
+        if (currentEl) currentEl.textContent = path;
+    }
+
+    getCurrentFile() {
+        return this.currentFile || localStorage.getItem('s-autocode-current-file') || Array.from(this.fileSystem.keys())[0] || '';
+    }
+
+    getFileLanguage(filePath) {
+        return runtimeEngine.detectLanguage(filePath);
     }
 
     // Open Monaco Editor with file
@@ -46,12 +89,29 @@ export class CodexTools {
             // Monaco should be loaded by monaco-loader.js
             return { success: false, error: 'Monaco not initialized yet' };
         }
-        
-        // Set content
-        if (window.monacoEditor.setValue) {
-            window.monacoEditor.setValue(content || `// ${filePath}\n// Edit your code here\n`);
+
+        if (!this.fileSystem.has(filePath)) {
+            this.fileSystem.set(filePath, content || this.getStarterContent(filePath));
+        } else if (content) {
+            this.fileSystem.set(filePath, content);
         }
-        
+        this.persistWorkspace();
+        this.setCurrentFile(filePath);
+
+        const fileContent = this.fileSystem.get(filePath);
+
+        if (window.cursorIntegration?.files) {
+            window.cursorIntegration.files.set(filePath, fileContent);
+            window.cursorIntegration.openFile(filePath);
+        } else if (window.monacoEditor.setValue) {
+            window.monacoEditor.setValue(fileContent);
+        }
+
+        const langEl = document.getElementById('editor-lang');
+        if (langEl) {
+            langEl.textContent = this.getFileLanguage(filePath).toUpperCase();
+        }
+
         return {
             success: true,
             file: filePath,
@@ -117,6 +177,18 @@ export class CodexTools {
         console.log(`[CODEX] Executing: ${command}`);
         this.commandHistory.push({ command, timestamp: Date.now() });
 
+        const lower = command.trim().toLowerCase();
+        if (this.runtimeHandler && (lower === 'run' || lower === 'build' || lower === 'preview' || lower.startsWith('run ') || lower.startsWith('build ') || lower.startsWith('preview '))) {
+            const result = await this.runtimeHandler(command);
+            return {
+                success: !!result.ok,
+                command,
+                output: result.output,
+                exitCode: result.ok ? 0 : 1,
+                real: true
+            };
+        }
+
         // Try real bash execution first
         if (this.bashInBashOut) {
             try {
@@ -129,9 +201,35 @@ export class CodexTools {
                     real: true
                 };
             } catch (error) {
-                console.warn('[CODEX] Real bash failed, using simulation:', error);
+                console.warn('[CODEX] Real bash failed, trying bridge:', error);
             }
         }
+
+        // Try bridge command endpoint before simulation
+        const bridgeEndpoint = window.S_AUTOCODE_CONFIG?.bridgeEndpoint
+            || localStorage.getItem('s_autocode_bridge_endpoint')
+            || 'https://collectivekitty.com/api/bridge';
+        try {
+            const r = await fetch(bridgeEndpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'command', command }),
+                signal: AbortSignal.timeout(8000),
+            });
+            if (r.ok) {
+                const data = await r.json();
+                if (data.output !== undefined) {
+                    return {
+                        success: data.exitCode === 0,
+                        command,
+                        output: data.output,
+                        exitCode: data.exitCode ?? 0,
+                        real: !data.simulated,
+                        bridge: true,
+                    };
+                }
+            }
+        } catch { /* fall through to simulation */ }
 
         // Fallback to simulation
         const output = this.simulateCommand(command);
@@ -252,6 +350,14 @@ export default function example() {
         console.log(`[CODEX] Writing: ${path}`);
         
         this.fileSystem.set(path, content);
+        this.persistWorkspace();
+        if (window.cursorIntegration?.files) {
+            window.cursorIntegration.files.set(path, content);
+        }
+        if (window.cursorIntegration?.fileTree) {
+            window.cursorIntegration.fileTree.syncFromWorkspace();
+            window.cursorIntegration.fileTree.render();
+        }
         
         return {
             success: true,
@@ -264,16 +370,8 @@ export default function example() {
     // List files in directory
     async listFiles(path, recursive = false) {
         console.log(`[CODEX] Listing: ${path}`);
-        
-        const files = [
-            'index.html',
-            'script.js',
-            'fireworks-ai.js',
-            'codex-tools.js',
-            'styles.css',
-            'README.md',
-            'package.json'
-        ];
+
+        const files = Array.from(this.fileSystem.keys()).sort();
         
         return {
             success: true,
@@ -286,15 +384,24 @@ export default function example() {
     // Search files with regex
     async searchFiles(path, regex, filePattern = '*') {
         console.log(`[CODEX] Searching: ${path} for ${regex}`);
+
+        const matches = [];
+        const pattern = new RegExp(regex, 'ig');
+        for (const [file, content] of this.fileSystem.entries()) {
+            const lines = content.split('\n');
+            lines.forEach((line, index) => {
+                pattern.lastIndex = 0;
+                if (pattern.test(line)) {
+                    matches.push({ file, line: index + 1, content: line.trim() });
+                }
+            });
+        }
         
         return {
             success: true,
             path,
             regex,
-            matches: [
-                { file: 'script.js', line: 243, content: 'const response = await fireworksAI.chat(msg, systemPrompt);' },
-                { file: 'fireworks-ai.js', line: 15, content: 'async chat(userMessage, systemPrompt = null) {' }
-            ]
+            matches
         };
     }
 
@@ -355,6 +462,20 @@ export default function example() {
         }
         
         return await this.tools[toolName](params);
+    }
+
+    getStarterContent(filePath) {
+        const language = this.getFileLanguage(filePath);
+        if (language === 'python') {
+            return 'def main():\n    print("Hello from S-AUTOCODE")\n\nif __name__ == "__main__":\n    main()\n';
+        }
+        if (language === 'html') {
+            return '<!doctype html>\n<html>\n  <body>\n    <h1>Hello from S-AUTOCODE</h1>\n  </body>\n</html>\n';
+        }
+        if (language === 'autocode') {
+            return '; S-AUTOCODE starter\n+ 0 1 2\n- 2 1 0\n';
+        }
+        return `// ${filePath}\nconsole.log("Hello from S-AUTOCODE");\n`;
     }
 }
 
