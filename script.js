@@ -6,6 +6,8 @@ import { initWormExplorer } from './worm-explorer.js';
 import { initProofRegistry } from './proof-registry.js';
 import { stateManager, addTerminalHistory,addCommandHistory, addWormBlock, addProof } from './state-manager.js';
 import { fireworksAI } from './fireworks-ai.js';
+import { codexTools } from './codex-tools.js';
+import { runtimeEngine } from './runtime-engine.js';
 
 // Global state
 const state = {
@@ -25,6 +27,73 @@ const state = {
         }
     }
 };
+
+window.codexTools = codexTools;
+
+function setPaneText(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = text;
+}
+
+function setPaneNode(id, node, fallbackText = '') {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = '';
+    if (fallbackText) {
+        el.textContent = fallbackText;
+    }
+    if (node) {
+        el.innerHTML = '';
+        el.appendChild(node);
+    }
+}
+
+function appendPaneText(id, text) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent += text;
+}
+
+function getActiveEditorContent() {
+    return window.monacoEditor?.getValue?.() || '';
+}
+
+function getActiveEditorFile() {
+    return codexTools.getCurrentFile() || 'main.js';
+}
+
+async function runActiveEditor(command = 'run') {
+    const filePath = getActiveEditorFile();
+    const code = getActiveEditorContent();
+    const language = runtimeEngine.detectLanguage(filePath);
+
+    if (!code.trim()) {
+        return {
+            ok: false,
+            output: 'The active editor is empty.',
+            language
+        };
+    }
+
+    setPaneText('editor-output-pane', `${command.toUpperCase()} ${filePath}...\n`);
+    setPaneText('editor-sexpr-pane', '');
+
+    const result = await runtimeEngine.executeCommand(command.includes(' ') ? command : `${command} ${filePath}`, {
+        filePath,
+        code,
+        language,
+        wasmModule: state.wasmModule
+    });
+
+    if (result.previewNode) {
+        setPaneNode('editor-output-pane', result.previewNode);
+    } else {
+        setPaneText('editor-output-pane', result.output);
+    }
+
+    return result;
+}
 
 // ============================================================
 // ERROR HANDLING & USER FEEDBACK
@@ -116,6 +185,41 @@ const reasoningSteps = {
         { label: 'Emit', formula: 'emit(Sealed { ... })' }
     ]
 };
+
+function setupEditorWorkbench() {
+    const saveBtn = document.getElementById('editor-save-btn');
+    const buildBtn = document.getElementById('editor-build-btn');
+    const runBtn = document.getElementById('editor-run-btn');
+    const previewBtn = document.getElementById('editor-preview-btn');
+
+    saveBtn?.addEventListener('click', async () => {
+        const filePath = getActiveEditorFile();
+        await codexTools.writeFile(filePath, getActiveEditorContent());
+        showSuccessToast(`Saved ${filePath}`);
+    });
+
+    buildBtn?.addEventListener('click', async () => {
+        await codexTools.writeFile(getActiveEditorFile(), getActiveEditorContent());
+        const result = await runActiveEditor('build');
+        if (result.ok) showSuccessToast('Build finished');
+    });
+
+    runBtn?.addEventListener('click', async () => {
+        await codexTools.writeFile(getActiveEditorFile(), getActiveEditorContent());
+        const result = await runActiveEditor('run');
+        if (result.ok) showSuccessToast('Run finished');
+    });
+
+    previewBtn?.addEventListener('click', async () => {
+        await codexTools.writeFile(getActiveEditorFile(), getActiveEditorContent());
+        const result = await runActiveEditor('preview');
+        if (result.ok) showSuccessToast('Preview updated');
+    });
+
+    runtimeEngine.onSExpression(({ expressions }) => {
+        setPaneText('editor-sexpr-pane', expressions.join('\n'));
+    });
+}
 
 function setupAgentChat() {
     const agentBtns = document.querySelectorAll('.agent-heap-btn');
@@ -241,17 +345,26 @@ function setupAgentChat() {
             runReasoningTicker(selectedAgent, async () => {
                 try {
                     const systemPrompt = 'You are CODEX, an AI coding agent in the S-AUTOCODE system. You help users write code, debug programs, and explain technical concepts. Be concise and helpful.';
-                    const response = await fireworksAI.chat(msg, systemPrompt);
                     typingEl.remove();
                     const profile = agentProfiles[selectedAgent];
-                    appendChatMsg(chatMessages, 'agent', profile.name, response);
+                    const messageEl = appendChatMsg(chatMessages, 'agent', profile.name, '');
+                    setPaneText('codex-response-pane', '');
+                    const response = await fireworksAI.chat(msg, systemPrompt, {
+                        onToken: (token) => {
+                            messageEl.textContent += token;
+                            appendPaneText('codex-response-pane', token);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    });
                     
                     // If there's a pending animation (code typing), run it now
                     if (fireworksAI.pendingAnimation) {
                         const animation = fireworksAI.pendingAnimation;
                         fireworksAI.pendingAnimation = null;
                         await animation();
+                        await codexTools.writeFile(getActiveEditorFile(), getActiveEditorContent());
                     }
+                    setPaneText('codex-response-pane', response);
                 } catch (error) {
                     typingEl.remove();
                     appendChatMsg(chatMessages, 'agent', 'CODEX', `Error: ${error.message}. Using fallback response.`);
@@ -284,9 +397,12 @@ function appendChatMsg(container, type, sender, text) {
     const profile = agentProfiles[sender?.toLowerCase()];
     const avatarLetter = sender ? sender[0] : (type === 'user' ? 'Y' : type === 'system' ? 'S' : '?');
     const avatarBg = profile?.color || (type === 'user' ? 'var(--status-success)' : type === 'system' ? 'var(--text-tertiary)' : 'var(--accent-primary)');
-    div.innerHTML = `<span class="agent-chat-avatar" style="background:${avatarBg}">${avatarLetter}</span><span class="agent-chat-text">${text}</span>`;
+    div.innerHTML = `<span class="agent-chat-avatar" style="background:${avatarBg}">${avatarLetter}</span><span class="agent-chat-text"></span>`;
     container.appendChild(div);
+    const textEl = div.querySelector('.agent-chat-text');
+    textEl.textContent = text;
     requestAnimationFrame(() => { container.scrollTop = container.scrollHeight; });
+    return textEl;
 }
 
 function getAgentResponse(agent, msg) {
@@ -332,6 +448,7 @@ function getAgentResponse(agent, msg) {
 // Boot
 async function boot() {
     console.log('S-AUTOCODE: Booting...');
+    codexTools.setRuntimeHandler(runActiveEditor);
     
     // Update status to loading
     updateRuntimeStatus('is-loading', 'Loading WASM...');
@@ -396,6 +513,14 @@ async function boot() {
     
     // Setup agent chat
     setupAgentChat();
+    setupEditorWorkbench();
+
+    const initialFile = codexTools.getCurrentFile();
+    if (initialFile) {
+        setTimeout(() => {
+            codexTools.openEditor(initialFile);
+        }, 300);
+    }
     
     // Seal genesis
     state.worm.append('BOOT', { system: 'S-AUTOCODE', version: '1.0.0' });
@@ -458,6 +583,9 @@ function processCommand(cmd, output) {
         appendLine(output, 'output', '  ─────────────────────────────────────────');
         appendLine(output, 'output', '  factorial <n>    →  Compute factorial');
         appendLine(output, 'output', '  sum <a> <b> ...  →  Compute sum');
+        appendLine(output, 'output', '  run [file]       →  Run active editor file');
+        appendLine(output, 'output', '  build [file]     →  Build active editor file');
+        appendLine(output, 'output', '  preview [file]   →  Preview HTML/current file');
         appendLine(output, 'output', '  hello            →  Greet the system');
         appendLine(output, 'output', '  chain            →  Show WORM blockchain');
         appendLine(output, 'output', '  agents           →  List agents');
@@ -478,6 +606,7 @@ function processCommand(cmd, output) {
         return;
     }
     if (lower === 'sandbox') { navigate('/sandbox'); return; }
+    if (lower === 'editor') { navigate('/editor'); return; }
     if (lower === 'agents') { navigate('/agents'); return; }
     if (lower === 'worm' || lower === 'chain') {
         const chain = state.worm.getChain();
@@ -505,6 +634,30 @@ function processCommand(cmd, output) {
         return;
     }
     if (lower === 'export') { exportSession(); return; }
+
+    if (lower === 'run' || lower.startsWith('run ')) {
+        navigate('/editor');
+        runActiveEditor(lower).then((result) => {
+            appendLine(output, result.ok ? 'result' : 'error', result.output);
+        });
+        return;
+    }
+
+    if (lower === 'build' || lower.startsWith('build ')) {
+        navigate('/editor');
+        runActiveEditor(lower).then((result) => {
+            appendLine(output, result.ok ? 'result' : 'error', result.output);
+        });
+        return;
+    }
+
+    if (lower === 'preview' || lower.startsWith('preview ')) {
+        navigate('/editor');
+        runActiveEditor(lower).then((result) => {
+            appendLine(output, result.ok ? 'result' : 'error', result.output);
+        });
+        return;
+    }
     
     // factorial <n>
     if (lower.startsWith('factorial ')) {

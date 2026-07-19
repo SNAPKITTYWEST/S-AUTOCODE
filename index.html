@@ -280,9 +280,34 @@
                         <div class="panel-content" id="editor-files"></div>
                     </div>
                     <div class="editor-main">
+                        <div class="editor-toolbar">
+                            <div class="editor-toolbar-left">
+                                <button class="btn btn-mini" id="editor-save-btn">Save</button>
+                                <button class="btn btn-mini" id="editor-build-btn">Build</button>
+                                <button class="btn btn-mini" id="editor-run-btn">Run</button>
+                                <button class="btn btn-mini" id="editor-preview-btn">Preview</button>
+                            </div>
+                            <div class="editor-toolbar-right">
+                                <span class="editor-current-file" id="editor-current-file">No file open</span>
+                            </div>
+                        </div>
                         <div class="editor-tabs" id="editor-tabs"></div>
                         <div class="editor-content" id="editor-content">
                             <div class="editor-placeholder">Open a file to begin editing</div>
+                        </div>
+                        <div class="editor-lower-panes">
+                            <section class="editor-lower-pane">
+                                <div class="panel-header"><h3 class="panel-title">CODEX Response</h3></div>
+                                <div class="panel-content editor-pane-content" id="codex-response-pane"></div>
+                            </section>
+                            <section class="editor-lower-pane">
+                                <div class="panel-header"><h3 class="panel-title">Build / Run Output</h3></div>
+                                <div class="panel-content editor-pane-content" id="editor-output-pane"></div>
+                            </section>
+                            <section class="editor-lower-pane">
+                                <div class="panel-header"><h3 class="panel-title">S-Expressions</h3></div>
+                                <div class="panel-content editor-pane-content" id="editor-sexpr-pane"></div>
+                            </section>
                         </div>
                         <div class="editor-statusbar">
                             <span id="editor-pos">Ln 1, Col 1</span>

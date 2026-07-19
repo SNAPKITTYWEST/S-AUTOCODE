@@ -16,6 +16,11 @@ export class CursorIntegration {
 
     async init() {
         console.log('🚀 Initializing Cursor-level enhancements...');
+        if (window.codexTools?.fileSystem) {
+            window.codexTools.fileSystem.forEach((content, path) => {
+                this.files.set(path, content);
+            });
+        }
         
         // Initialize Monaco Editor
         try {
@@ -30,6 +35,8 @@ export class CursorIntegration {
         const fileTreeContainer = document.getElementById('editor-files');
         if (fileTreeContainer) {
             this.fileTree = new FileTree(fileTreeContainer);
+            this.fileTree.syncFromWorkspace();
+            this.fileTree.render();
             this.setupFileTreeHandlers();
             console.log('✓ File Tree initialized');
         }
@@ -66,11 +73,16 @@ export class CursorIntegration {
             language: 'autocode',
             theme: 's-autocode-dark'
         });
+        window.monacoEditor = this.editor;
 
         // Setup editor event handlers
         this.editor.onDidChangeModelContent(() => {
             if (this.activeFile) {
                 this.files.set(this.activeFile, this.editor.getValue());
+                if (window.codexTools?.fileSystem) {
+                    window.codexTools.fileSystem.set(this.activeFile, this.editor.getValue());
+                    window.codexTools.persistWorkspace?.();
+                }
             }
         });
 
@@ -92,6 +104,9 @@ export class CursorIntegration {
         // File creation
         this.fileTree.on('create', (path) => {
             this.files.set(path, '');
+            window.codexTools?.writeFile(path.replace(/^\//, ''), '');
+            this.fileTree.syncFromWorkspace();
+            this.fileTree.render();
             this.showToast('success', `Created ${path}`);
         });
 
@@ -103,12 +118,18 @@ export class CursorIntegration {
         // File delete
         this.fileTree.on('delete', (path) => {
             this.files.delete(path);
+            if (window.codexTools?.fileSystem) {
+                window.codexTools.fileSystem.delete(path.replace(/^\//, ''));
+                window.codexTools.persistWorkspace?.();
+            }
             if (this.activeFile === path) {
                 this.activeFile = null;
                 if (this.editor) {
                     this.editor.setValue('');
                 }
             }
+            this.fileTree.syncFromWorkspace();
+            this.fileTree.render();
             this.showToast('info', 'File deleted');
         });
 
@@ -285,14 +306,15 @@ export class CursorIntegration {
     }
 
     openFile(path) {
-        this.activeFile = path;
+        const normalizedPath = path.replace(/^\//, '');
+        this.activeFile = normalizedPath;
         
         if (this.editor) {
-            const content = this.files.get(path) || `// ${path}\n\n`;
+            const content = this.files.get(normalizedPath) || this.files.get(path) || `// ${normalizedPath}\n\n`;
             this.editor.setValue(content);
             
             // Set language based on file extension
-            const ext = path.split('.').pop();
+            const ext = normalizedPath.split('.').pop();
             const langMap = {
                 'ac': 'autocode',
                 'js': 'javascript',
@@ -302,9 +324,17 @@ export class CursorIntegration {
             };
             const lang = langMap[ext] || 'plaintext';
             this.monaco.editor.setModelLanguage(this.editor.getModel(), lang);
+            const langEl = document.getElementById('editor-lang');
+            if (langEl) langEl.textContent = lang.toUpperCase();
         }
 
-        this.showToast('info', `Opened ${path}`);
+        const currentFileEl = document.getElementById('editor-current-file');
+        if (currentFileEl) currentFileEl.textContent = normalizedPath;
+        if (window.codexTools?.setCurrentFile) {
+            window.codexTools.setCurrentFile(normalizedPath);
+        }
+
+        this.showToast('info', `Opened ${normalizedPath}`);
     }
 
     togglePanel(panel) {

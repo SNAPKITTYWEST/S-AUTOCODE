@@ -16,15 +16,45 @@ export class FileTree {
         
         // Create default project structure
         this.addFile('/', 'root', 'directory', null, true);
-        this.addFile('/examples', 'examples', 'directory', '/');
-        this.addFile('/examples/factorial.ac', 'factorial.ac', 'file', '/examples');
-        this.addFile('/examples/fibonacci.ac', 'fibonacci.ac', 'file', '/examples');
-        this.addFile('/src', 'src', 'directory', '/');
-        this.addFile('/src/main.ac', 'main.ac', 'file', '/src');
-        this.addFile('/README.md', 'README.md', 'file', '/');
+        this.syncFromWorkspace();
         
         this.render();
         this.setupContextMenu();
+    }
+
+    syncFromWorkspace(entries = null) {
+        const workspace = entries || this.readWorkspaceEntries();
+        const existing = Array.from(this.files.keys()).filter((path) => path !== '/');
+        existing.forEach((path) => this.files.delete(path));
+        this.files.get('/').children = [];
+
+        workspace.forEach(([path]) => {
+            const normalized = path.startsWith('/') ? path : `/${path}`;
+            const parts = normalized.split('/').filter(Boolean);
+            let parent = '/';
+
+            parts.forEach((part, index) => {
+                const currentPath = `/${parts.slice(0, index + 1).join('/')}`;
+                if (!this.files.has(currentPath)) {
+                    const isFile = index === parts.length - 1;
+                    this.addFile(currentPath, part, isFile ? 'file' : 'directory', parent, true);
+                }
+                parent = currentPath;
+            });
+        });
+
+        if (workspace.length === 0) {
+            this.addFile('/main.js', 'main.js', 'file', '/');
+        }
+    }
+
+    readWorkspaceEntries() {
+        try {
+            const raw = localStorage.getItem('s-autocode-workspace');
+            return raw ? JSON.parse(raw) : [];
+        } catch (_) {
+            return [];
+        }
     }
 
     addFile(path, name, type, parent, expanded = false) {
