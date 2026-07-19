@@ -515,11 +515,21 @@ async function boot() {
     setupAgentChat();
     setupEditorWorkbench();
 
-    const initialFile = codexTools.getCurrentFile();
-    if (initialFile) {
-        setTimeout(() => {
-            codexTools.openEditor(initialFile);
-        }, 300);
+    // Wait for Monaco (cursor-integration.js) before opening first file
+    const openInitialFile = () => {
+        const file = codexTools.getCurrentFile();
+        if (file && window.monacoEditor) {
+            codexTools.openEditor(file);
+        }
+    };
+    if (window.monacoEditor) {
+        openInitialFile();
+    } else {
+        // Poll until Monaco is ready (cursor-integration init is async)
+        const wait = setInterval(() => {
+            if (window.monacoEditor) { clearInterval(wait); openInitialFile(); }
+        }, 100);
+        setTimeout(() => clearInterval(wait), 5000);
     }
     
     // Seal genesis
@@ -533,6 +543,28 @@ async function boot() {
         data: { system: 'S-AUTOCODE', version: '1.0.0' }
     });
     
+    // Wire header search bar → command palette
+    const globalSearch = document.getElementById('global-search');
+    if (globalSearch) {
+        globalSearch.addEventListener('focus', () => {
+            globalSearch.blur();
+            import('./command-palette.js').then(m => m.commandPalette.open());
+        });
+        globalSearch.addEventListener('click', () => {
+            globalSearch.blur();
+            import('./command-palette.js').then(m => m.commandPalette.open());
+        });
+    }
+
+    // Populate agents view
+    renderAgentsGrid();
+
+    // Populate sandbox view
+    renderSandboxView(state.sandbox);
+
+    // Populate deploy view
+    renderDeployView();
+
     // Focus input
     input.focus();
     
@@ -798,6 +830,164 @@ function exportSession() {
     a.href = URL.createObjectURL(blob);
     a.download = `s-autocode-${Date.now()}.json`;
     a.click();
+}
+
+function renderAgentsGrid() {
+    const grid = document.getElementById('agents-grid');
+    const detail = document.getElementById('agent-detail');
+    if (!grid) return;
+
+    grid.innerHTML = Object.entries(agentProfiles).map(([id, p]) => `
+        <div class="agent-card" data-agent="${id}" style="border-top: 2px solid ${p.color}">
+            <div class="agent-card-header">
+                <span class="agent-card-dot" style="background:${p.color}"></span>
+                <span class="agent-card-name">${p.name}</span>
+                <span class="agent-card-status">online</span>
+            </div>
+            <div class="agent-card-role">${p.role}</div>
+            <div class="agent-card-stats">
+                <span>Trust: <strong>${p.trust}</strong></span>
+                <span>WORM: <strong>${p.worm}</strong></span>
+                <span>Proposals: <strong>${p.proposals}</strong></span>
+            </div>
+            <div class="agent-card-domain">Domain: ${p.domain}</div>
+        </div>
+    `).join('');
+
+    grid.querySelectorAll('.agent-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const p = agentProfiles[card.dataset.agent];
+            if (!p || !detail) return;
+            detail.innerHTML = `
+                <div class="agent-detail-content">
+                    <div class="agent-detail-title" style="color:${p.color}">${p.name}</div>
+                    <div class="agent-detail-role">${p.role}</div>
+                    <div class="agent-detail-rule">${p.rule}</div>
+                    <button class="btn" onclick="window.location.hash='#/observatory'">Open Chat</button>
+                </div>`;
+        });
+    });
+}
+
+function renderSandboxView(sandbox) {
+    const regsEl = document.getElementById('sandbox-registers');
+    const memEl  = document.getElementById('sandbox-memory');
+    const traceEl = document.getElementById('sandbox-trace');
+    const selfEl = document.getElementById('sandbox-selfmod');
+    if (!regsEl) return;
+
+    function renderRegs() {
+        regsEl.innerHTML = Object.entries(sandbox.registers)
+            .map(([r, v]) => `<div class="reg-row"><span class="reg-name">${r}</span><span class="reg-val">0x${v.toString(16).padStart(16,'0')}</span></div>`)
+            .join('');
+    }
+
+    function renderMem() {
+        const cells = Array.from(sandbox.memory).slice(0, 64);
+        memEl.innerHTML = `<div class="mem-grid">${cells.map((v, i) =>
+            `<div class="mem-cell"><span class="mem-addr">${i.toString(16).padStart(4,'0')}</span><span class="mem-val">${v}</span></div>`
+        ).join('')}</div>`;
+    }
+
+    function renderTrace() {
+        if (!sandbox.trace.length) {
+            traceEl.innerHTML = '<div class="empty-state">No trace. Load and run a program.</div>';
+            return;
+        }
+        traceEl.innerHTML = sandbox.trace.slice(-20).map(t =>
+            `<div class="trace-row"><span class="trace-step">${t.step}</span><span class="trace-pc">PC:${t.pc}</span><span class="trace-op">${t.instruction?.op || '?'}</span></div>`
+        ).join('');
+    }
+
+    function renderSelfMod() {
+        selfEl.innerHTML = sandbox.selfModDetections.length
+            ? sandbox.selfModDetections.map(d =>
+                `<div class="selfmod-row">Step ${d.step} — addr 0x${d.address?.toString(16) || '?'}</div>`
+              ).join('')
+            : '<div class="empty-state">No self-modifying code detected.</div>';
+    }
+
+    renderRegs(); renderMem(); renderTrace(); renderSelfMod();
+
+    // Wire controls
+    document.getElementById('sandbox-run')?.addEventListener('click', () => {
+        sandbox.loadProgram([
+            { op: 'MOV', dest: 'RAX', src: { type: 'imm', value: 42n } },
+            { op: 'MOV', dest: 'RBX', src: { type: 'imm', value: 58n } },
+            { op: 'ADD', dest: 'RCX', src: { type: 'reg', name: 'RAX' }, src2: { type: 'reg', name: 'RBX' } },
+            { op: 'HALT' }
+        ]);
+        sandbox.run(1000);
+        renderRegs(); renderMem(); renderTrace(); renderSelfMod();
+        showSuccessToast('Program ran. RAX=42, RBX=58, RCX=100');
+    });
+    document.getElementById('sandbox-step')?.addEventListener('click', () => {
+        sandbox.step(); renderRegs(); renderMem(); renderTrace();
+    });
+    document.getElementById('sandbox-reset')?.addEventListener('click', () => {
+        sandbox.reset(); renderRegs(); renderMem(); renderTrace(); renderSelfMod();
+        showSuccessToast('Sandbox reset');
+    });
+}
+
+function renderDeployView() {
+    const dash = document.getElementById('deploy-dashboard');
+    if (!dash) return;
+    dash.innerHTML = `
+        <div class="deploy-section">
+            <div class="deploy-header-row">
+                <h3 class="deploy-title">Deployment Targets</h3>
+                <span class="deploy-badge">v1.0.0</span>
+            </div>
+            <div class="deploy-targets">
+                <div class="deploy-target">
+                    <div class="deploy-target-header">
+                        <span class="deploy-target-name">GitHub Pages</span>
+                        <span class="deploy-target-status is-live">LIVE</span>
+                    </div>
+                    <div class="deploy-target-url">snapkittywest.github.io/S-AUTOCODE</div>
+                    <div class="deploy-target-meta">Auto-deploy on push to main</div>
+                </div>
+                <div class="deploy-target">
+                    <div class="deploy-target-header">
+                        <span class="deploy-target-name">Cloudflare Bridge</span>
+                        <span class="deploy-target-status is-live">LIVE</span>
+                    </div>
+                    <div class="deploy-target-url">collectivekitty.com/api/bridge</div>
+                    <div class="deploy-target-meta">AI + runtime proxy — Qwen2.5-Coder-32B</div>
+                </div>
+                <div class="deploy-target">
+                    <div class="deploy-target-header">
+                        <span class="deploy-target-name">WORM Ledger</span>
+                        <span class="deploy-target-status is-live">SEALING</span>
+                    </div>
+                    <div class="deploy-target-url">In-browser SHA-256 chain</div>
+                    <div class="deploy-target-meta">Every computation sealed on execute</div>
+                </div>
+            </div>
+        </div>
+        <div class="deploy-section">
+            <h3 class="deploy-title">Runtime Config</h3>
+            <div class="deploy-config">
+                <div class="deploy-config-row">
+                    <span class="deploy-config-key">AI Endpoint</span>
+                    <input class="deploy-config-val" id="cfg-ai-endpoint" value="${localStorage.getItem('s_autocode_ai_endpoint') || 'https://collectivekitty.com/api/bridge'}" />
+                </div>
+                <div class="deploy-config-row">
+                    <span class="deploy-config-key">Runtime Endpoint</span>
+                    <input class="deploy-config-val" id="cfg-runtime-endpoint" value="${localStorage.getItem('s_autocode_runtime_endpoint') || ''}" placeholder="https://emkc.org/api/v2/piston/execute" />
+                </div>
+                <button class="btn" id="cfg-save-btn">Save Config</button>
+            </div>
+        </div>`;
+
+    document.getElementById('cfg-save-btn')?.addEventListener('click', () => {
+        const ai = document.getElementById('cfg-ai-endpoint')?.value.trim();
+        const rt = document.getElementById('cfg-runtime-endpoint')?.value.trim();
+        if (ai) localStorage.setItem('s_autocode_ai_endpoint', ai);
+        if (rt) localStorage.setItem('s_autocode_runtime_endpoint', rt);
+        showSuccessToast('Config saved. Reload to apply.');
+    });
 }
 
 // Boot

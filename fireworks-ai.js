@@ -9,7 +9,7 @@ export class FireworksAI {
         this.apiUrl = 'https://api.fireworks.ai/inference/v1/chat/completions';
         this.conversationHistory = [];
         this.isThinking = false;
-        this.useMock = true;
+        this.useMock = false;
         this.tools = codexTools;
         this.toolUseEnabled = true;
     }
@@ -48,17 +48,10 @@ export class FireworksAI {
     }
 
     async generateResponse(message, systemPrompt = null) {
-        if (!this.useMock) {
-            try {
-                return await this.queryProxy(message, systemPrompt);
-            } catch (error) {
-                console.warn('CODEX proxy unavailable, using local fallback:', error);
-            }
-        }
-
         try {
             return await this.queryProxy(message, systemPrompt);
-        } catch (_) {
+        } catch (error) {
+            console.warn('CODEX bridge unavailable, using local fallback:', error);
             return this.generateSmartResponse(message);
         }
     }
